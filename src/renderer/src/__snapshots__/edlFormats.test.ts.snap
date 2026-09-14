@@ -1,335 +1,124 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`format srt 1`] = `
-"1
-00:00:02,000 --> 00:00:06,000
-First subtitle
-
-2
-00:00:28,967 --> 01:30:30,950
-Subtitle 2 line 1
-Subtitle 2 line 2
-"
-`;
-
-exports[`otio 1`] = `
+exports[`parses xmeml 1 1`] = `
 [
   {
-    "end": 4.5,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "end": 8.56,
     "start": 0,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
   },
   {
-    "end": 482.23333333333335,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
-    "start": 66.36666666666666,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
+    "end": 13.12,
+    "start": 8.56,
   },
   {
-    "end": 66.36666666666667,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
-    "start": 4.5,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
+    "end": 19.12,
+    "start": 13.12,
   },
   {
-    "end": 4.5,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
-    "start": 0,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
+    "end": 27.96,
+    "start": 19.12,
   },
   {
-    "end": 482.23333333333335,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
-    "start": 66.36666666666666,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
+    "end": 39.08,
+    "start": 27.96,
   },
   {
-    "end": 66.36666666666667,
-    "name": "2004-2-汐洛定制女包专营店.mp4",
-    "start": 4.5,
-    "tags": {
-      "otioClip": "2",
-      "otioTrack": "1",
-    },
+    "end": 49.36,
+    "start": 39.08,
   },
 ]
 `;
 
-exports[`parseDjiGps1 1`] = `
-{
-  "alt": 19,
-  "distance": 67.78,
-  "dzoom": undefined,
-  "ev": -1,
-  "f": "F/2.8",
-  "height": 20.3,
-  "horizontalSpeed": 1.03,
-  "iso": 100,
-  "lat": 67.9771,
-  "lng": 15.0732,
-  "ss": 776.89,
-  "verticalSpeed": 0,
-}
-`;
-
-exports[`parseDjiGps1 2`] = `
-{
-  "alt": 26,
-  "distance": 0.57,
-  "dzoom": 1,
-  "ev": 0,
-  "f": "F/2.8",
-  "height": 102.4,
-  "horizontalSpeed": 0,
-  "iso": 100,
-  "lat": 56.5019,
-  "lng": -3.913,
-  "ss": 678.52,
-  "verticalSpeed": -0,
-}
-`;
-
-exports[`parseDjiGps2 1`] = `
-{
-  "altitude": 1245.046,
-  "lat": 62.229033,
-  "lng": 6.552877,
-}
-`;
-
-exports[`parses DV Analyzer Summary.txt 1`] = `
+exports[`parses xmeml 2 1`] = `
 [
   {
-    "end": 60.4,
-    "name": "XXXX-XX-XX 00:00:00.000",
+    "end": 2033.5666666666666,
+    "start": 5.1,
+  },
+  {
+    "end": 3839.2833333333333,
+    "start": 3017.7,
+  },
+  {
+    "end": 4686.366666666667,
+    "start": 3862.9333333333334,
+  },
+  {
+    "end": 6310.016666666666,
+    "start": 5324.066666666667,
+  },
+  {
+    "end": 6959.516666666666,
+    "start": 6928.15,
+  },
+  {
+    "end": 8081.116666666667,
+    "start": 6985.9,
+  },
+  {
+    "end": 9750.05,
+    "start": 8728.066666666668,
+  },
+  {
+    "end": 10545.116666666667,
+    "start": 9793.316666666668,
+  },
+  {
+    "end": 10864.883333333333,
+    "start": 10740.633333333333,
+  },
+]
+`;
+
+exports[`parses xmeml - with multiple tracks 1`] = `
+[
+  {
+    "end": 11,
     "start": 0,
-    "tags": {
-      "recordedEnd": "XXXX-XX-XX XX:XX:XX:XX",
-      "recordedStart": "XXXX-XX-XX 00:00:00.000",
-    },
   },
   {
-    "end": 485.08,
-    "name": "XXXX-XX-XX XX:XX:XX:XX",
-    "start": 60.4,
-    "tags": {
-      "recordedEnd": "2001-12-31 23:22:09",
-      "recordedStart": "XXXX-XX-XX XX:XX:XX:XX",
-    },
+    "end": 4.08,
+    "start": 0.96,
   },
   {
-    "end": 1010.68,
-    "name": "2001-12-31 23:28:13",
-    "start": 485.08,
-    "tags": {
-      "recordedEnd": "2002-01-01 19:34:38",
-      "recordedStart": "2001-12-31 23:28:13",
-    },
+    "end": 3.88,
+    "start": 1.12,
   },
   {
-    "end": 1235.32,
-    "name": "2002-01-01 13:31:24",
-    "start": 1010.68,
-    "tags": {
-      "recordedEnd": "2002-01-01 22:03:01",
-      "recordedStart": "2002-01-01 13:31:24",
-    },
+    "end": 4.32,
+    "start": 0.84,
   },
   {
-    "end": 1575.04,
-    "name": "2002-01-02 14:27:10",
-    "start": 1235.32,
-    "tags": {
-      "recordedEnd": "2002-01-02 15:48:55",
-      "recordedStart": "2002-01-02 14:27:10",
-    },
+    "end": 3.36,
+    "start": 0.36,
   },
   {
-    "end": 1575.08,
-    "name": "2002-01-02 22:30:22",
-    "start": 1575.04,
-    "tags": {
-      "recordedEnd": "2002-01-02 22:30:22",
-      "recordedStart": "2002-01-02 22:30:22",
-    },
+    "end": 6.24,
+    "start": 0.36,
   },
   {
-    "end": 1575.16,
-    "name": "2002-01-02 22:30:22",
-    "start": 1575.08,
-    "tags": {
-      "recordedEnd": "2002-01-02 22:30:22",
-      "recordedStart": "2002-01-02 22:30:22",
-    },
+    "end": 4.52,
+    "start": 0.24,
   },
   {
-    "end": 1575.24,
-    "name": "2002-01-02 22:30:22",
-    "start": 1575.16,
-    "tags": {
-      "recordedEnd": "2002-01-05 10:57:51",
-      "recordedStart": "2002-01-02 22:30:22",
-    },
+    "end": 2.48,
+    "start": 0.48,
   },
   {
-    "end": 1919.44,
-    "name": "2002-01-05 10:57:51",
-    "start": 1575.24,
-    "tags": {
-      "recordedEnd": "2002-01-05 11:36:20",
-      "recordedStart": "2002-01-05 10:57:51",
-    },
+    "end": 2.36,
+    "start": 0.48,
   },
   {
-    "end": 2075.88,
-    "name": "2002-01-05 13:18:43",
-    "start": 1919.44,
-    "tags": {
-      "recordedEnd": "2002-01-05 14:04:19",
-      "recordedStart": "2002-01-05 13:18:43",
-    },
+    "end": 1.36,
+    "start": 0.36,
   },
   {
-    "end": 2138.2,
-    "name": "2002-01-05 16:39:22",
-    "start": 2075.88,
-    "tags": {
-      "recordedEnd": "2002-01-05 22:51:40",
-      "recordedStart": "2002-01-05 16:39:22",
-    },
+    "end": 1.36,
+    "start": 0.36,
   },
   {
-    "end": 2138.76,
-    "name": "2002-01-05 16:40:24",
-    "start": 2138.2,
-    "tags": {
-      "recordedEnd": "2002-01-05 16:40:25",
-      "recordedStart": "2002-01-05 16:40:24",
-    },
-  },
-  {
-    "end": 2217.32,
-    "name": "2002-01-05 22:53:17",
-    "start": 2138.76,
-    "tags": {
-      "recordedEnd": "2002-01-05 22:55:08",
-      "recordedStart": "2002-01-05 22:53:17",
-    },
-  },
-  {
-    "end": 2269.96,
-    "name": "2002-01-16 21:17:04",
-    "start": 2217.32,
-    "tags": {
-      "recordedEnd": "2002-01-16 21:18:01",
-      "recordedStart": "2002-01-16 21:17:04",
-    },
-  },
-  {
-    "end": 2332.64,
-    "name": "2002-01-20 20:06:37",
-    "start": 2269.96,
-    "tags": {
-      "recordedEnd": "2002-01-20 20:07:48",
-      "recordedStart": "2002-01-20 20:06:37",
-    },
-  },
-  {
-    "end": 3009.12,
-    "name": "2002-01-30 18:34:52",
-    "start": 2332.64,
-    "tags": {
-      "recordedEnd": "2002-03-12 00:46:51",
-      "recordedStart": "2002-01-30 18:34:52",
-    },
-  },
-  {
-    "end": 3596.48,
-    "name": "2002-03-14 20:27:57",
-    "start": 3009.12,
-    "tags": {
-      "recordedEnd": "2002-04-12 21:06:54",
-      "recordedStart": "2002-03-14 20:27:57",
-    },
-  },
-  {
-    "end": 3622.08,
-    "name": "2002-04-12 21:06:56",
-    "start": 3596.48,
-    "tags": {
-      "recordedEnd": "2002-04-12 21:07:22",
-      "recordedStart": "2002-04-12 21:06:56",
-    },
-  },
-  {
-    "end": 4305,
-    "name": "2002-04-12 21:11:47",
-    "start": 3622.08,
-    "tags": {
-      "recordedEnd": "2002-04-27 00:05:36",
-      "recordedStart": "2002-04-12 21:11:47",
-    },
-  },
-  {
-    "end": 4307.12,
-    "name": "2002-04-25 22:59:57",
-    "start": 4305,
-    "tags": {
-      "recordedEnd": "2002-04-25 22:59:59",
-      "recordedStart": "2002-04-25 22:59:57",
-    },
-  },
-  {
-    "end": 4357.68,
-    "name": "2002-04-25 23:00:00",
-    "start": 4307.12,
-    "tags": {
-      "recordedEnd": "2002-05-02 13:33:33",
-      "recordedStart": "2002-04-25 23:00:00",
-    },
-  },
-  {
-    "end": 4359.72,
-    "name": "2002-04-25 23:00:50",
-    "start": 4357.68,
-    "tags": {
-      "recordedEnd": "2002-04-25 23:00:52",
-      "recordedStart": "2002-04-25 23:00:50",
-    },
-  },
-  {
-    "end": 4660.44,
-    "name": "2002-05-02 13:40:27",
-    "start": 4359.72,
-    "tags": {
-      "recordedEnd": "2002-05-02 13:53:34",
-      "recordedStart": "2002-05-02 13:40:27",
-    },
-  },
-  {
-    "end": undefined,
-    "name": "2002-05-02 13:54:14",
-    "start": 4660.44,
-    "tags": {
-      "recordedEnd": "2002-05-02 13:59:29",
-      "recordedStart": "2002-05-02 13:54:14",
-    },
+    "end": 1.04,
+    "start": 0.36,
   },
 ]
 `;
@@ -1159,8 +948,10 @@ exports[`parses srt 1`] = `
   },
   {
     "end": 5430.95,
-    "name": "Subtitle 2 line 1
-Subtitle 2 line 2",
+    "name": 
+"Subtitle 2 line 1
+Subtitle 2 line 2"
+,
     "start": 28.967,
     "tags": {
       "index": "2",
@@ -1169,125 +960,336 @@ Subtitle 2 line 2",
 ]
 `;
 
-exports[`parses xmeml - with multiple tracks 1`] = `
+exports[`format srt 1`] = `
+"1
+00:00:02,000 --> 00:00:06,000
+First subtitle
+
+2
+00:00:28,967 --> 01:30:30,950
+Subtitle 2 line 1
+Subtitle 2 line 2
+"
+`;
+
+exports[`parses DV Analyzer Summary.txt 1`] = `
 [
   {
-    "end": 11,
+    "end": 60.4,
+    "name": "XXXX-XX-XX 00:00:00.000",
     "start": 0,
+    "tags": {
+      "recordedEnd": "XXXX-XX-XX XX:XX:XX:XX",
+      "recordedStart": "XXXX-XX-XX 00:00:00.000",
+    },
   },
   {
-    "end": 4.08,
-    "start": 0.96,
+    "end": 485.08,
+    "name": "XXXX-XX-XX XX:XX:XX:XX",
+    "start": 60.4,
+    "tags": {
+      "recordedEnd": "2001-12-31 23:22:09",
+      "recordedStart": "XXXX-XX-XX XX:XX:XX:XX",
+    },
   },
   {
-    "end": 3.88,
-    "start": 1.12,
+    "end": 1010.68,
+    "name": "2001-12-31 23:28:13",
+    "start": 485.08,
+    "tags": {
+      "recordedEnd": "2002-01-01 19:34:38",
+      "recordedStart": "2001-12-31 23:28:13",
+    },
   },
   {
-    "end": 4.32,
-    "start": 0.84,
+    "end": 1235.32,
+    "name": "2002-01-01 13:31:24",
+    "start": 1010.68,
+    "tags": {
+      "recordedEnd": "2002-01-01 22:03:01",
+      "recordedStart": "2002-01-01 13:31:24",
+    },
   },
   {
-    "end": 3.36,
-    "start": 0.36,
+    "end": 1575.04,
+    "name": "2002-01-02 14:27:10",
+    "start": 1235.32,
+    "tags": {
+      "recordedEnd": "2002-01-02 15:48:55",
+      "recordedStart": "2002-01-02 14:27:10",
+    },
   },
   {
-    "end": 6.24,
-    "start": 0.36,
+    "end": 1575.08,
+    "name": "2002-01-02 22:30:22",
+    "start": 1575.04,
+    "tags": {
+      "recordedEnd": "2002-01-02 22:30:22",
+      "recordedStart": "2002-01-02 22:30:22",
+    },
   },
   {
-    "end": 4.52,
-    "start": 0.24,
+    "end": 1575.16,
+    "name": "2002-01-02 22:30:22",
+    "start": 1575.08,
+    "tags": {
+      "recordedEnd": "2002-01-02 22:30:22",
+      "recordedStart": "2002-01-02 22:30:22",
+    },
   },
   {
-    "end": 2.48,
-    "start": 0.48,
+    "end": 1575.24,
+    "name": "2002-01-02 22:30:22",
+    "start": 1575.16,
+    "tags": {
+      "recordedEnd": "2002-01-05 10:57:51",
+      "recordedStart": "2002-01-02 22:30:22",
+    },
   },
   {
-    "end": 2.36,
-    "start": 0.48,
+    "end": 1919.44,
+    "name": "2002-01-05 10:57:51",
+    "start": 1575.24,
+    "tags": {
+      "recordedEnd": "2002-01-05 11:36:20",
+      "recordedStart": "2002-01-05 10:57:51",
+    },
   },
   {
-    "end": 1.36,
-    "start": 0.36,
+    "end": 2075.88,
+    "name": "2002-01-05 13:18:43",
+    "start": 1919.44,
+    "tags": {
+      "recordedEnd": "2002-01-05 14:04:19",
+      "recordedStart": "2002-01-05 13:18:43",
+    },
   },
   {
-    "end": 1.36,
-    "start": 0.36,
+    "end": 2138.2,
+    "name": "2002-01-05 16:39:22",
+    "start": 2075.88,
+    "tags": {
+      "recordedEnd": "2002-01-05 22:51:40",
+      "recordedStart": "2002-01-05 16:39:22",
+    },
   },
   {
-    "end": 1.04,
-    "start": 0.36,
+    "end": 2138.76,
+    "name": "2002-01-05 16:40:24",
+    "start": 2138.2,
+    "tags": {
+      "recordedEnd": "2002-01-05 16:40:25",
+      "recordedStart": "2002-01-05 16:40:24",
+    },
+  },
+  {
+    "end": 2217.32,
+    "name": "2002-01-05 22:53:17",
+    "start": 2138.76,
+    "tags": {
+      "recordedEnd": "2002-01-05 22:55:08",
+      "recordedStart": "2002-01-05 22:53:17",
+    },
+  },
+  {
+    "end": 2269.96,
+    "name": "2002-01-16 21:17:04",
+    "start": 2217.32,
+    "tags": {
+      "recordedEnd": "2002-01-16 21:18:01",
+      "recordedStart": "2002-01-16 21:17:04",
+    },
+  },
+  {
+    "end": 2332.64,
+    "name": "2002-01-20 20:06:37",
+    "start": 2269.96,
+    "tags": {
+      "recordedEnd": "2002-01-20 20:07:48",
+      "recordedStart": "2002-01-20 20:06:37",
+    },
+  },
+  {
+    "end": 3009.12,
+    "name": "2002-01-30 18:34:52",
+    "start": 2332.64,
+    "tags": {
+      "recordedEnd": "2002-03-12 00:46:51",
+      "recordedStart": "2002-01-30 18:34:52",
+    },
+  },
+  {
+    "end": 3596.48,
+    "name": "2002-03-14 20:27:57",
+    "start": 3009.12,
+    "tags": {
+      "recordedEnd": "2002-04-12 21:06:54",
+      "recordedStart": "2002-03-14 20:27:57",
+    },
+  },
+  {
+    "end": 3622.08,
+    "name": "2002-04-12 21:06:56",
+    "start": 3596.48,
+    "tags": {
+      "recordedEnd": "2002-04-12 21:07:22",
+      "recordedStart": "2002-04-12 21:06:56",
+    },
+  },
+  {
+    "end": 4305,
+    "name": "2002-04-12 21:11:47",
+    "start": 3622.08,
+    "tags": {
+      "recordedEnd": "2002-04-27 00:05:36",
+      "recordedStart": "2002-04-12 21:11:47",
+    },
+  },
+  {
+    "end": 4307.12,
+    "name": "2002-04-25 22:59:57",
+    "start": 4305,
+    "tags": {
+      "recordedEnd": "2002-04-25 22:59:59",
+      "recordedStart": "2002-04-25 22:59:57",
+    },
+  },
+  {
+    "end": 4357.68,
+    "name": "2002-04-25 23:00:00",
+    "start": 4307.12,
+    "tags": {
+      "recordedEnd": "2002-05-02 13:33:33",
+      "recordedStart": "2002-04-25 23:00:00",
+    },
+  },
+  {
+    "end": 4359.72,
+    "name": "2002-04-25 23:00:50",
+    "start": 4357.68,
+    "tags": {
+      "recordedEnd": "2002-04-25 23:00:52",
+      "recordedStart": "2002-04-25 23:00:50",
+    },
+  },
+  {
+    "end": 4660.44,
+    "name": "2002-05-02 13:40:27",
+    "start": 4359.72,
+    "tags": {
+      "recordedEnd": "2002-05-02 13:53:34",
+      "recordedStart": "2002-05-02 13:40:27",
+    },
+  },
+  {
+    "end": undefined,
+    "name": "2002-05-02 13:54:14",
+    "start": 4660.44,
+    "tags": {
+      "recordedEnd": "2002-05-02 13:59:29",
+      "recordedStart": "2002-05-02 13:54:14",
+    },
   },
 ]
 `;
 
-exports[`parses xmeml 1 1`] = `
-[
-  {
-    "end": 8.56,
-    "start": 0,
-  },
-  {
-    "end": 13.12,
-    "start": 8.56,
-  },
-  {
-    "end": 19.12,
-    "start": 13.12,
-  },
-  {
-    "end": 27.96,
-    "start": 19.12,
-  },
-  {
-    "end": 39.08,
-    "start": 27.96,
-  },
-  {
-    "end": 49.36,
-    "start": 39.08,
-  },
-]
+exports[`parseDjiGps1 1`] = `
+{
+  "alt": 19,
+  "distance": 67.78,
+  "dzoom": undefined,
+  "ev": -1,
+  "f": "F/2.8",
+  "height": 20.3,
+  "horizontalSpeed": 1.03,
+  "iso": 100,
+  "lat": 67.9771,
+  "lng": 15.0732,
+  "ss": 776.89,
+  "verticalSpeed": 0,
+}
 `;
 
-exports[`parses xmeml 2 1`] = `
+exports[`parseDjiGps1 2`] = `
+{
+  "alt": 26,
+  "distance": 0.57,
+  "dzoom": 1,
+  "ev": 0,
+  "f": "F/2.8",
+  "height": 102.4,
+  "horizontalSpeed": 0,
+  "iso": 100,
+  "lat": 56.5019,
+  "lng": -3.913,
+  "ss": 678.52,
+  "verticalSpeed": -0,
+}
+`;
+
+exports[`parseDjiGps2 1`] = `
+{
+  "altitude": 1245.046,
+  "lat": 62.229033,
+  "lng": 6.552877,
+}
+`;
+
+exports[`otio 1`] = `
 [
   {
-    "end": 2033.5666666666666,
-    "start": 5.1,
+    "end": 4.5,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 0,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
   {
-    "end": 3839.2833333333333,
-    "start": 3017.7,
+    "end": 482.23333333333335,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 66.36666666666666,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
   {
-    "end": 4686.366666666667,
-    "start": 3862.9333333333334,
+    "end": 66.36666666666667,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 4.5,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
   {
-    "end": 6310.016666666666,
-    "start": 5324.066666666667,
+    "end": 4.5,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 0,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
   {
-    "end": 6959.516666666666,
-    "start": 6928.15,
+    "end": 482.23333333333335,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 66.36666666666666,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
   {
-    "end": 8081.116666666667,
-    "start": 6985.9,
-  },
-  {
-    "end": 9750.05,
-    "start": 8728.066666666668,
-  },
-  {
-    "end": 10545.116666666667,
-    "start": 9793.316666666668,
-  },
-  {
-    "end": 10864.883333333333,
-    "start": 10740.633333333333,
+    "end": 66.36666666666667,
+    "name": "2004-2-汐洛定制女包专营店.mp4",
+    "start": 4.5,
+    "tags": {
+      "otioClip": "2",
+      "otioTrack": "1",
+    },
   },
 ]
 `;

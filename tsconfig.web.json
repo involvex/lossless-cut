@@ -3,14 +3,13 @@
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "target": "esnext",
-
-    "types": ["vite/client"],
+    "types": ["vite/client"]
   },
   "references": [
     { "path": "./tsconfig.main.json" },
-    { "path": "./tsconfig.common.json" },
+    { "path": "./tsconfig.common.json" }
   ],
   "include": [
-    "src/renderer/**/*",
-  ],
+    "src/renderer/**/*"
+  ]
 }

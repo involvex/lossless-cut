@@ -3,17 +3,15 @@
   "compilerOptions": {
     "composite": true,
     "noEmit": false,
-
     "outDir": "common-ts-dist",
     "tsBuildInfoFile": "common-ts-dist/tsconfig.tsbuildinfo",
-
-    // https://nodejs.org/api/typescript.html
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
+    "types": ["@types/bun"]
   },
   "include": [
-    "src/common/**/*",
-  ],
+    "src/common/**/*"
+  ]
 }

@@ -3,11 +3,11 @@ index e51397cb4104da5424936208509d2aa0dc73313f..6f35005d143a4f52b8acd99ca0979ca5
 --- a/package.json
 +++ b/package.json
 @@ -8,12 +8,16 @@
-   "umd:main": "dist/mitt.umd.js",
-   "source": "src/index.ts",
-   "typings": "index.d.ts",
+    "umd:main": "dist/mitt.umd.js",
+    "source": "src/index.ts",
+    "typings": "index.d.ts",
 +  "type": "module",
-   "exports": {
+    "exports": {
 -    "types": "./index.d.ts",
 -    "module": "./dist/mitt.mjs",
 -    "import": "./dist/mitt.mjs",
@@ -21,6 +21,6 @@ index e51397cb4104da5424936208509d2aa0dc73313f..6f35005d143a4f52b8acd99ca0979ca5
 +      "types": "./index.d.ts",
 +      "default": "./dist/mitt.js"
 +    }
-   },
-   "scripts": {
-     "test": "npm-run-all --silent typecheck lint mocha test-types",
+    },
+    "scripts": {
+      "test": "npm-run-all --silent typecheck lint mocha test-types",

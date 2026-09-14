@@ -1,5 +1,16 @@
 module.exports = {
   extends: ['mifi'],
+  parserOptions: {
+    project: [
+      './tsconfig.json',
+      './tsconfig.web.json',
+      './tsconfig.main.json',
+      './tsconfig.node.json',
+      './tsconfig.common.json',
+      './tsconfig.preload.json'
+    ],
+    tsconfigRootDir: __dirname,
+  },
   rules: {
     'jsx-a11y/click-events-have-key-events': 0,
     'jsx-a11y/interactive-supports-focus': 0,

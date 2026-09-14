@@ -25,9 +25,7 @@ jobs:
 
     strategy:
       matrix:
-        # todo upgrade to windows-latest (VS 2026, but it requires node-gyp 13 which is not included yet as of node 24) https://claude.ai/code/session_012stY6nPsqDo5EPAXYnZ8WJ
         os: [macos-latest, ubuntu-latest, windows-2022, windows-11-arm]
-#        os: [windows-latest]
 
     steps:
       - name: Setup tmate session
@@ -35,8 +33,8 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.tmate_enabled }}
         with:
           detached: true
-  
-        # Windows fix. See https://github.com/actions/checkout/issues/226
+
+      # Windows fix. See https://github.com/actions/checkout/issues/226
       - run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v6
@@ -44,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: 'yarn'
+          cache: 'bun'
 
       # This global ffmpeg is used for screenshots (see below)
       - uses: AnimMouse/setup-ffmpeg@v1
@@ -53,13 +51,12 @@ jobs:
       - run: ffmpeg -version
         if: runner.os != 'Windows' || runner.arch != 'ARM64'
 
-       # Because of timeout issue https://github.com/yarnpkg/yarn/issues/4890
-      - run: yarn install --immutable --network-timeout 1000000
+      - run: bun install --frozen-lockfile
 
       - name: (Linux) Install and login to Snapcraft
         uses: samuelmeuli/action-snapcraft@v2
         if: runner.os == 'Linux'
-      
+
       - name: Save provisioning profile
         if: runner.os == 'macOS'
         env:
@@ -77,28 +74,28 @@ jobs:
       - name: (MacOS) Download ffmpeg
         if: runner.os == 'macOS'
         run: |
-          yarn download-ffmpeg-darwin-x64
-          yarn download-ffmpeg-darwin-arm64
+          bun run download-ffmpeg-darwin-x64
+          bun run download-ffmpeg-darwin-arm64
 
       - name: (Windows x64) Download ffmpeg
         if: runner.os == 'Windows' && runner.arch == 'X64'
-        run: yarn download-ffmpeg-win32-x64
+        run: bun run download-ffmpeg-win32-x64
 
       - name: (Windows ARM64) Download ffmpeg
         if: runner.os == 'Windows' && runner.arch == 'ARM64'
-        run: yarn download-ffmpeg-win32-arm64
+        run: bun run download-ffmpeg-win32-arm64
 
       - name: (Linux) Download ffmpeg
         if: runner.os == 'Linux'
-        run: yarn download-ffmpeg-linux-x64
+        run: bun run download-ffmpeg-linux-x64
 
       - run: ls -R ffmpeg
 
-      - run: yarn build
+      - run: bun run build
 
       - name: Build for macOS
         if: runner.os == 'macOS'
-        run: yarn electron-builder --publish onTag
+        run: bun run electron-builder --publish onTag
         env:
           GH_TOKEN: ${{ secrets.github_token }}
           # signing:
@@ -111,19 +108,19 @@ jobs:
 
       - name: Build for Linux
         if: runner.os == 'Linux'
-        run: yarn electron-builder --publish onTag
+        run: bun run electron-builder --publish onTag
         env:
           GH_TOKEN: ${{ secrets.github_token }}
 
       - name: Build for Windows x64
         if: runner.os == 'Windows' && runner.arch == 'X64'
-        run: yarn electron-builder --publish onTag --win --x64
+        run: bun run electron-builder --publish onTag --win --x64
         env:
           GH_TOKEN: ${{ secrets.github_token }}
 
       - name: Build for Windows ARM64
         if: runner.os == 'Windows' && runner.arch == 'ARM64'
-        run: yarn electron-builder --publish onTag --win --arm64
+        run: bun run electron-builder --publish onTag --win --arm64
         env:
           GH_TOKEN: ${{ secrets.github_token }}
 
@@ -160,9 +157,9 @@ jobs:
           ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
           ACTIONS_RESULTS_URL: ${{ env.ACTIONS_RESULTS_URL }}
         run: |
-          yarn upload-artifacts dist/LosslessCut-mac-arm64.dmg
-          yarn upload-artifacts dist/LosslessCut-mac-x64.dmg
-          yarn upload-artifacts --name screenshot-mac.jpeg screenshot.jpeg
+          bun run upload-artifacts dist/LosslessCut-mac-arm64.dmg
+          bun run upload-artifacts dist/LosslessCut-mac-x64.dmg
+          bun run upload-artifacts --name screenshot-mac.jpeg screenshot.jpeg
 
       - name: (Windows) Upload artifacts
         if: runner.os == 'Windows' && env.is_tag == 'false'
@@ -170,14 +167,14 @@ jobs:
           ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
           ACTIONS_RESULTS_URL: ${{ env.ACTIONS_RESULTS_URL }}
         run: |
-          yarn upload-artifacts dist/LosslessCut-win-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}.7z
+          bun run upload-artifacts dist/LosslessCut-win-${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}.7z
 
       - name: (Windows x64) Upload screenshot
         if: runner.os == 'Windows' && runner.arch == 'X64' && env.is_tag == 'false'
         env:
           ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
           ACTIONS_RESULTS_URL: ${{ env.ACTIONS_RESULTS_URL }}
-        run: yarn upload-artifacts --name screenshot-windows.jpeg screenshot.jpeg
+        run: bun run upload-artifacts --name screenshot-windows.jpeg screenshot.jpeg
 
       - name: (Linux) Upload artifacts
         if: runner.os == 'Linux' && env.is_tag == 'false'
@@ -185,9 +182,8 @@ jobs:
           ACTIONS_RUNTIME_TOKEN: ${{ env.ACTIONS_RUNTIME_TOKEN }}
           ACTIONS_RESULTS_URL: ${{ env.ACTIONS_RESULTS_URL }}
         run: |
-          yarn upload-artifacts dist/LosslessCut-linux-arm64.tar.bz2
-          yarn upload-artifacts dist/LosslessCut-linux-armv7l.tar.bz2
-          yarn upload-artifacts dist/LosslessCut-linux-x64.tar.bz2
-          yarn upload-artifacts dist/LosslessCut-linux-x86_64.AppImage
-          yarn upload-artifacts --name screenshot-linux.jpeg screenshot.jpeg
-
+          bun run upload-artifacts dist/LosslessCut-linux-arm64.tar.bz2
+          bun run upload-artifacts dist/LosslessCut-linux-armv7l.tar.bz2
+          bun run upload-artifacts dist/LosslessCut-linux-x64.tar.bz2
+          bun run upload-artifacts dist/LosslessCut-linux-x86_64.AppImage
+          bun run upload-artifacts --name screenshot-linux.jpeg screenshot.jpeg
