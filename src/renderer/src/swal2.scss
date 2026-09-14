@@ -1,3 +1,5 @@
+@use "sweetalert2/src/sweetalert2.scss" as *;
+
 $swal2-outline-color: var(--gray-5) !default;
 
 // see colors.ts primaryColor
@@ -7,15 +9,17 @@ $myswal-background: var(--gray-1);
 $myswal-foreground: var(--gray-12);
 $swal2-outline-color: $swal2-outline-color;
 
-$swal2-border: .1em solid $swal2-outline-color;
+$swal2-border: 0.1em solid $swal2-outline-color;
 $swal2-background: $myswal-background;
 $swal2-html-container-color: $myswal-foreground;
 $swal2-title-color: $myswal-foreground;
-$swal2-backdrop: rgba(0, 0, 0, .75);
+$swal2-backdrop: rgba(0, 0, 0, 0.75);
 
 // TOAST
 $swal2-toast-background: $myswal-background;
-$swal2-toast-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-outline-color;
+$swal2-toast-button-focus-box-shadow:
+  0 0 0 1px $swal2-background,
+  0 0 0 3px $swal2-outline-color;
 
 $swal2-close-button-color: var(--gray-11);
 
@@ -38,7 +42,9 @@ $swal2-validation-message-color: $myswal-foreground;
 $swal2-progress-step-background: var(--gray-5);
 
 // COMMON VARIABLES FOR CONFIRM AND CANCEL BUTTONS
-$swal2-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-outline-color;
+$swal2-button-focus-box-shadow:
+  0 0 0 1px $swal2-background,
+  0 0 0 3px $swal2-outline-color;
 
 .swal2-textarea::placeholder {
   color: var(--gray-8);
@@ -55,5 +61,3 @@ $swal2-button-focus-box-shadow: 0 0 0 1px $swal2-background, 0 0 0 3px $swal2-ou
 .swal2-popup {
   pointer-events: auto;
 }
-
-@import 'sweetalert2/src/sweetalert2.scss';
