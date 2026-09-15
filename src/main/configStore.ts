@@ -12,7 +12,6 @@ import { fallbackLng } from './i18nCommon.js';
 
 const { app } = electron;
 
-
 const defaultKeyBindings: KeyBinding[] = [
   { keys: 'ShiftLeft+Equal', action: 'addSegment' },
   { keys: 'Space', action: 'togglePlayResetSpeed' },
@@ -157,7 +156,10 @@ const defaults: Config = {
   enableNativeHevc: true,
   enableUpdateCheck: true,
   cleanupChoices: {
-    trashTmpFiles: true, askForCleanup: true, closeFile: true, cleanupAfterExport: false,
+    trashTmpFiles: true,
+    askForCleanup: true,
+    closeFile: true,
+    cleanupAfterExport: false,
   },
   allowMultipleInstances: false,
   darkMode: true,
@@ -172,6 +174,7 @@ const defaults: Config = {
   keyframesEnabled: true,
   reducedMotion: 'user',
   ffmpegHwaccel: 'none',
+  lossyMode: {},
 };
 
 const configFileName = 'config.json'; // note: this is also hard-coded inside electron-store
@@ -210,7 +213,11 @@ export function reset<T extends keyof Config>(key: T) {
   set(key, defaults[key]);
 }
 
-async function tryCreateStore({ customStoragePath }: { customStoragePath: string | undefined }) {
+async function tryCreateStore({
+  customStoragePath,
+}: {
+  customStoragePath: string | undefined;
+}) {
   for (let i = 0; i < 5; i += 1) {
     try {
       store = new Store({
@@ -232,7 +239,10 @@ let customStoragePath: string | undefined;
 
 export const getConfigPath = () => customStoragePath ?? join(app.getPath('userData'), configFileName); // custom path, or default used by electron-store
 
-async function tryBackupConfigFile(oldConfigVersion: number, appVersion: string) {
+async function tryBackupConfigFile(
+  oldConfigVersion: number,
+  appVersion: string,
+) {
   try {
     const configPath = getConfigPath();
     const backupPath = `${configPath}.backup-v${appVersion}-${oldConfigVersion}-${Date.now()}`;
@@ -243,8 +253,12 @@ async function tryBackupConfigFile(oldConfigVersion: number, appVersion: string)
   }
 }
 
-export async function init({ customConfigDir }: { customConfigDir: string | undefined }) {
-  customStoragePath = customConfigDir ?? await lookForNeighbourConfigFile();
+export async function init({
+  customConfigDir,
+}: {
+  customConfigDir: string | undefined;
+}) {
+  customStoragePath = customConfigDir ?? (await lookForNeighbourConfigFile());
   if (customStoragePath) logger.info('customStoragePath', customStoragePath);
 
   await tryCreateStore({ customStoragePath });
@@ -254,7 +268,10 @@ export async function init({ customConfigDir }: { customConfigDir: string | unde
   if (enableTransferTimestamps != null) {
     logger.info('Migrating enableTransferTimestamps');
     store.delete('enableTransferTimestamps');
-    set('treatOutputFileModifiedTimeAsStart', enableTransferTimestamps ? true : undefined);
+    set(
+      'treatOutputFileModifiedTimeAsStart',
+      enableTransferTimestamps ? true : undefined,
+    );
   }
 
   const cleanupChoices = store.get('cleanupChoices'); // todo remove after a while
@@ -273,140 +290,156 @@ export async function init({ customConfigDir }: { customConfigDir: string | unde
 
   // const configVersion: number = store.get('version');
 
-  const keyBindings = (store.get('keyBindings') as KeyBinding[]).map(({ keys, action }) => ({ keysStr: keys, keys: keys.split('+'), action }));
+  const keyBindings = (store.get('keyBindings') as KeyBinding[]).map(
+    ({ keys, action }) => ({ keysStr: keys, keys: keys.split('+'), action }),
+  );
 
   // assume that if there is one binding with ctrl, then it's the old format where keys were stored as strings like "Ctrl+Shift+S". We want to migrate to the new format where keys are stored as "ControlLeft+ShiftLeft+KeyS"
   // todo remove after a while
-  if (keyBindings.some(({ keys }) => keys.some((k) => k.toLowerCase() === 'ctrl'))) {
+  if (
+    keyBindings.some(({ keys }) => keys.some((k) => k.toLowerCase() === 'ctrl'))
+  ) {
     await tryBackupConfigFile(1, app.getVersion());
 
-    const newBindings = keyBindings.map(({ keys: keysOrig, keysStr, action }) => {
-      try {
-        assert(keysOrig.length > 0 && keysOrig.every((k) => k.length > 0), 'Invalid keys');
+    const newBindings = keyBindings.map(
+      ({ keys: keysOrig, keysStr, action }) => {
+        try {
+          assert(
+            keysOrig.length > 0 && keysOrig.every((k) => k.length > 0),
+            'Invalid keys',
+          );
 
-        const map: Record<string, string> = {
-          /* eslint-disable quote-props */
-          'esc': 'Escape',
-          '1': 'Digit1',
-          '2': 'Digit2',
-          '3': 'Digit3',
-          '4': 'Digit4',
-          '5': 'Digit5',
-          '6': 'Digit6',
-          '7': 'Digit7',
-          '8': 'Digit8',
-          '9': 'Digit9',
-          '0': 'Digit0',
-          '-': 'Minus',
-          '=': 'Equal',
-          'backspace': 'Backspace',
-          'tab': 'Tab',
-          'q': 'KeyQ',
-          'w': 'KeyW',
-          'e': 'KeyE',
-          'r': 'KeyR',
-          't': 'KeyT',
-          'y': 'KeyY',
-          'u': 'KeyU',
-          'i': 'KeyI',
-          'o': 'KeyO',
-          'p': 'KeyP',
-          '[': 'BracketLeft',
-          ']': 'BracketRight',
-          'enter': 'Enter',
-          'a': 'KeyA',
-          's': 'KeyS',
-          'd': 'KeyD',
-          'f': 'KeyF',
-          'g': 'KeyG',
-          'h': 'KeyH',
-          'j': 'KeyJ',
-          'k': 'KeyK',
-          'l': 'KeyL',
-          ';': 'Semicolon',
-          '\'': 'Quote',
-          '`': 'Backquote',
-          '\\': 'Backslash',
-          'z': 'KeyZ',
-          'x': 'KeyX',
-          'c': 'KeyC',
-          'v': 'KeyV',
-          'b': 'KeyB',
-          'n': 'KeyN',
-          'm': 'KeyM',
-          ',': 'Comma',
-          '.': 'Period',
-          '/': 'Slash',
-          '*': 'NumpadMultiply',
-          'space': 'Space',
-          'capslock': 'CapsLock',
-          'f1': 'F1',
-          'f2': 'F2',
-          'f3': 'F3',
-          'f4': 'F4',
-          'f5': 'F5',
-          'f6': 'F6',
-          'f7': 'F7',
-          'f8': 'F8',
-          'f9': 'F9',
-          'f10': 'F10',
-          'pause': 'Pause',
-          'f11': 'F11',
-          'f12': 'F12',
-          'f13': 'F13',
-          'f14': 'F14',
-          'f15': 'F15',
-          'f16': 'F16',
-          'f17': 'F17',
-          'f18': 'F18',
-          'f19': 'F19',
-          'f20': 'F20',
-          'f21': 'F21',
-          'f22': 'F22',
-          'f23': 'F23',
-          'f24': 'F24',
-          '(': 'NumpadParenLeft',
-          ')': 'NumpadParenRight',
-          'help': 'Help',
-          'numlock': 'NumLock',
-          'home': 'Home',
-          'up': 'ArrowUp',
-          'pageup': 'PageUp',
-          'left': 'ArrowLeft',
-          'right': 'ArrowRight',
-          'end': 'End',
-          'down': 'ArrowDown',
-          'pagedown': 'PageDown',
-          'ins': 'Insert',
-          'del': 'Delete',
+          const map: Record<string, string> = {
+            /* eslint-disable quote-props */
+            esc: 'Escape',
+            '1': 'Digit1',
+            '2': 'Digit2',
+            '3': 'Digit3',
+            '4': 'Digit4',
+            '5': 'Digit5',
+            '6': 'Digit6',
+            '7': 'Digit7',
+            '8': 'Digit8',
+            '9': 'Digit9',
+            '0': 'Digit0',
+            '-': 'Minus',
+            '=': 'Equal',
+            backspace: 'Backspace',
+            tab: 'Tab',
+            q: 'KeyQ',
+            w: 'KeyW',
+            e: 'KeyE',
+            r: 'KeyR',
+            t: 'KeyT',
+            y: 'KeyY',
+            u: 'KeyU',
+            i: 'KeyI',
+            o: 'KeyO',
+            p: 'KeyP',
+            '[': 'BracketLeft',
+            ']': 'BracketRight',
+            enter: 'Enter',
+            a: 'KeyA',
+            s: 'KeyS',
+            d: 'KeyD',
+            f: 'KeyF',
+            g: 'KeyG',
+            h: 'KeyH',
+            j: 'KeyJ',
+            k: 'KeyK',
+            l: 'KeyL',
+            ';': 'Semicolon',
+            "'": 'Quote',
+            '`': 'Backquote',
+            '\\': 'Backslash',
+            z: 'KeyZ',
+            x: 'KeyX',
+            c: 'KeyC',
+            v: 'KeyV',
+            b: 'KeyB',
+            n: 'KeyN',
+            m: 'KeyM',
+            ',': 'Comma',
+            '.': 'Period',
+            '/': 'Slash',
+            '*': 'NumpadMultiply',
+            space: 'Space',
+            capslock: 'CapsLock',
+            f1: 'F1',
+            f2: 'F2',
+            f3: 'F3',
+            f4: 'F4',
+            f5: 'F5',
+            f6: 'F6',
+            f7: 'F7',
+            f8: 'F8',
+            f9: 'F9',
+            f10: 'F10',
+            pause: 'Pause',
+            f11: 'F11',
+            f12: 'F12',
+            f13: 'F13',
+            f14: 'F14',
+            f15: 'F15',
+            f16: 'F16',
+            f17: 'F17',
+            f18: 'F18',
+            f19: 'F19',
+            f20: 'F20',
+            f21: 'F21',
+            f22: 'F22',
+            f23: 'F23',
+            f24: 'F24',
+            '(': 'NumpadParenLeft',
+            ')': 'NumpadParenRight',
+            help: 'Help',
+            numlock: 'NumLock',
+            home: 'Home',
+            up: 'ArrowUp',
+            pageup: 'PageUp',
+            left: 'ArrowLeft',
+            right: 'ArrowRight',
+            end: 'End',
+            down: 'ArrowDown',
+            pagedown: 'PageDown',
+            ins: 'Insert',
+            del: 'Delete',
 
-          // modifiers
-          'ctrl': 'ControlLeft',
-          'shift': 'ShiftLeft',
-          'alt': 'AltLeft',
-          'meta': 'MetaLeft',
-          /* eslint-enable quote-props */
-        };
+            // modifiers
+            ctrl: 'ControlLeft',
+            shift: 'ShiftLeft',
+            alt: 'AltLeft',
+            meta: 'MetaLeft',
+            /* eslint-enable quote-props */
+          };
 
-        const newKeys = keysOrig.flatMap((k) => {
-          if (k === 'plus') return ['shift', '='];
-          if (k === 'command') return ['meta'];
-          if (k === 'option') return ['alt'];
-          if (k === 'return') return ['enter'];
-          if (k === 'escape') return ['esc'];
-          return [k];
-        }).map((k) => {
-          const mapped = map[k.toLowerCase()];
-          assert(mapped != null, `Unknown key: ${k}`);
-          return mapped;
-        });
+          const newKeys = keysOrig
+            .flatMap((k) => {
+              if (k === 'plus') return ['shift', '='];
+              if (k === 'command') return ['meta'];
+              if (k === 'option') return ['alt'];
+              if (k === 'return') return ['enter'];
+              if (k === 'escape') return ['esc'];
+              return [k];
+            })
+            .map((k) => {
+              const mapped = map[k.toLowerCase()];
+              assert(mapped != null, `Unknown key: ${k}`);
+              return mapped;
+            });
 
-        return { keys: newKeys.join('+'), action };
-      } catch (err) {
-        logger.error('Failed to migrate old keyboard binding', keysStr, action, err);
-        return { keys: keysStr, action };
-      }
-    });
+          return { keys: newKeys.join('+'), action };
+        } catch (err) {
+          logger.error(
+            'Failed to migrate old keyboard binding',
+            keysStr,
+            action,
+            err,
+          );
+          return { keys: keysStr, action };
+        }
+      },
+    );
     set('keyBindings', newBindings);
 
     logger.info('Migrated config to version 2');

@@ -3,7 +3,16 @@ process.traceProcessWarnings = true;
 
 /* eslint-disable import/first */
 // eslint-disable-next-line import/no-extraneous-dependencies
-import electron, { BrowserWindow, type BrowserWindowConstructorOptions, nativeTheme, shell, app, ipcMain, Notification, type NotificationConstructorOptions } from 'electron';
+import electron, {
+  BrowserWindow,
+  type BrowserWindowConstructorOptions,
+  nativeTheme,
+  shell,
+  app,
+  ipcMain,
+  Notification,
+  type NotificationConstructorOptions,
+} from 'electron';
 import i18n from 'i18next';
 import debounce from 'lodash.debounce/index.js';
 import yargsParser from 'yargs-parser';
@@ -18,13 +27,23 @@ import electronUnhandled from 'electron-unhandled';
 import { fileTypeFromFile } from 'file-type';
 import type { Asyncify } from 'type-fest';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-devtools-installer';
+import {
+  installExtension,
+  REACT_DEVELOPER_TOOLS,
+} from 'electron-devtools-installer';
 import mitt from 'mitt';
 
 import logger from './logger.js';
 import menu from './menu.js';
 import * as configStore from './configStore.js';
-import { isLinux, isWindows, isMac, platform, arch, pathExists } from './util.js';
+import {
+  isLinux,
+  isWindows,
+  isMac,
+  platform,
+  arch,
+  pathExists,
+} from './util.js';
 import { appName } from './common.js';
 import attachContextMenu from './contextMenu.js';
 import HttpServer from './httpServer.js';
@@ -40,8 +59,10 @@ import * as compatPlayer from './compatPlayer.js';
 import { downloadMediaUrl } from './ffmpeg.js';
 import { hasDisabledNetworking, setDisableNetworking } from './networking.js';
 
-
-electronUnhandled({ showDialog: true, logger: (err) => logger.error('electron-unhandled', err) });
+electronUnhandled({
+  showDialog: true,
+  logger: (err) => logger.error('electron-unhandled', err),
+});
 
 // https://chromestatus.com/feature/5748496434987008
 // https://peter.sh/experiments/chromium-command-line-switches/
@@ -49,7 +70,6 @@ electronUnhandled({ showDialog: true, logger: (err) => logger.error('electron-un
 app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
 
 remote.initialize();
-
 
 app.name = appName;
 
@@ -79,20 +99,26 @@ async function sendApiAction(action: string, args?: unknown[]) {
   try {
     const id = apiActionRequestsId;
     apiActionRequestsId += 1;
-    mainWindow!.webContents.send('apiAction', { id, action, args } satisfies ApiActionRequest);
+    mainWindow!.webContents.send('apiAction', {
+      id,
+      action,
+      args,
+    } satisfies ApiActionRequest);
     await new Promise<void>((resolve) => apiActionRequests.set(id, resolve));
   } catch (err) {
     logger.error('sendApiAction', err);
   }
 }
 
-export type AppEvent = {
-  eventName: 'export-complete',
-  paths?: string[],
-} | {
-  eventName: 'export-start',
-  path: string,
-}
+export type AppEvent =
+  | {
+      eventName: 'export-complete';
+      paths?: string[];
+    }
+  | {
+      eventName: 'export-start';
+      path: string;
+    };
 
 const appEventEmitter = mitt<{ appEvent: AppEvent }>();
 
@@ -265,16 +291,87 @@ function parseCliArgs(rawArgv = process.argv) {
 
 const argv = parseCliArgs();
 
-const lossyModeSchema = z.object({ videoEncoder: z.union([z.literal('libx264'), z.literal('libx265'), z.literal('libsvtav1')]) });
+const lossyModeSchema = z.object({
+  // Video encoding
+  videoEncoder: z
+    .union([
+      z.literal('libx264'),
+      z.literal('libx265'),
+      z.literal('libsvtav1'),
+      z.literal('h264_nvenc'),
+      z.literal('hevc_nvenc'),
+      z.literal('h264_qsv'),
+      z.literal('hevc_qsv'),
+      z.literal('h264_videotoolbox'),
+      z.literal('hevc_videotoolbox'),
+    ])
+    .optional(),
+  videoBitrate: z.number().optional(),
+  videoCrf: z.number().optional(),
+  videoPreset: z
+    .union([
+      z.literal('ultrafast'),
+      z.literal('superfast'),
+      z.literal('veryfast'),
+      z.literal('faster'),
+      z.literal('fast'),
+      z.literal('medium'),
+      z.literal('slow'),
+      z.literal('slower'),
+      z.literal('veryslow'),
+    ])
+    .optional(),
+  videoProfile: z.string().optional(),
+  videoLevel: z.string().optional(),
+  // Video filters
+  videoFilters: z.array(z.string()).optional(),
+  // Audio encoding
+  audioEncoder: z
+    .union([
+      z.literal('aac'),
+      z.literal('libmp3lame'),
+      z.literal('libopus'),
+      z.literal('flac'),
+      z.literal('ac3'),
+      z.literal('eac3'),
+    ])
+    .optional(),
+  audioBitrate: z.number().optional(),
+  audioChannels: z.number().optional(),
+  audioSampleRate: z.number().optional(),
+  // Audio filters
+  audioFilters: z.array(z.string()).optional(),
+  // GIF-specific
+  gifFps: z.number().optional(),
+  gifScale: z.number().optional(),
+  // General
+  outputFormat: z.string().optional(),
+  hwaccel: z
+    .union([
+      z.literal('none'),
+      z.literal('auto'),
+      z.literal('nvenc'),
+      z.literal('qsv'),
+      z.literal('videotoolbox'),
+      z.literal('vaapi'),
+      z.literal('vdpau'),
+      z.literal('dxva2'),
+      z.literal('d3d11va'),
+    ])
+    .optional(),
+});
 // eslint-disable-next-line prefer-destructuring
-const lossyMode = argv['lossyMode'] ? lossyModeSchema.parse(JSON5.parse(argv['lossyMode'])) : undefined;
+const lossyMode = argv['lossyMode']
+  ? lossyModeSchema.parse(JSON5.parse(argv['lossyMode']))
+  : undefined;
 
 export type LossyMode = z.infer<typeof lossyModeSchema>;
 
 if (argv['localesPath'] != null) i18nCommon.setCustomLocalesPath(argv['localesPath']);
 
-
-function safeRequestSingleInstanceLock(additionalData: Record<string, unknown>) {
+function safeRequestSingleInstanceLock(
+  additionalData: Record<string, unknown>,
+) {
   if (process.mas) return true; // todo remove when dropping support for MacOS 13 https://github.com/electron/electron/issues/35540#issuecomment-2173130321
 
   // using additionalData because the built in "argv" passing is a bit broken:
@@ -297,7 +394,10 @@ async function init() {
     const allowMultipleInstances = configStore.get('allowMultipleInstances');
     const language = configStore.get('language');
 
-    if (!allowMultipleInstances && !safeRequestSingleInstanceLock({ argv: process.argv })) {
+    if (
+      !allowMultipleInstances
+      && !safeRequestSingleInstanceLock({ argv: process.argv })
+    ) {
       logger.info('Found running instance, quitting');
       app.quit();
       return;
@@ -307,22 +407,36 @@ async function init() {
     // However when users start your app in command line, the system's single instance mechanism will be bypassed, and you have to use this method to ensure single instance.
     // This can be tested with one terminal: npx electron .
     // and another terminal: npx electron . path/to/file.mp4
-    app.on('second-instance', (_event, _commandLine, _workingDirectory, additionalData) => {
-      // Someone tried to run a second instance, we should focus our window.
-      if (mainWindow) {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.focus();
-      }
+    app.on(
+      'second-instance',
+      (_event, _commandLine, _workingDirectory, additionalData) => {
+        // Someone tried to run a second instance, we should focus our window.
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.focus();
+        }
 
-      if (!(additionalData != null && typeof additionalData === 'object' && 'argv' in additionalData) || !Array.isArray(additionalData.argv)) return;
+        if (
+          !(
+            additionalData != null
+            && typeof additionalData === 'object'
+            && 'argv' in additionalData
+          )
+          || !Array.isArray(additionalData.argv)
+        ) return;
 
-      const argv2 = parseCliArgs(additionalData.argv);
+        const argv2 = parseCliArgs(additionalData.argv);
 
-      logger.info('second-instance', argv2);
+        logger.info('second-instance', argv2);
 
-      if (argv2['keyboardAction']) sendApiAction(argv2['keyboardAction'], argv2._.map((arg) => JSON.parse(String(arg))));
-      else if (argv2._ && argv2._.length > 0) openFilesEventually(argv2._.map(String));
-    });
+        if (argv2['keyboardAction']) {
+          sendApiAction(
+            argv2['keyboardAction'],
+            argv2._.map((arg) => JSON.parse(String(arg))),
+          );
+        } else if (argv2._ && argv2._.length > 0) openFilesEventually(argv2._.map(String));
+      },
+    );
 
     // Quit when all windows are closed.
     app.on('window-all-closed', () => {
@@ -392,11 +506,14 @@ async function init() {
 
     if (httpApi != null) {
       const port = typeof httpApi === 'number' ? httpApi : 8080;
-      const { startHttpServer } = HttpServer({ port, onKeyboardAction: sendApiAction, onAwaitAppEvent });
+      const { startHttpServer } = HttpServer({
+        port,
+        onKeyboardAction: sendApiAction,
+        onAwaitAppEvent,
+      });
       await startHttpServer();
       logger.info('HTTP API listening on port', port);
     }
-
 
     if (isDev) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require,import/no-extraneous-dependencies
@@ -483,22 +600,31 @@ const remoteApiLegacy = {
 
 export type RemoteApiLegacy = typeof remoteApiLegacy;
 
-
 // @ts-expect-error don't know how to type
-app.addListener('remote-require', (event: { returnValue: RemoteApiLegacy }, _webContents: unknown, moduleName: string) => {
-  if (moduleName === './index.js') {
-    // eslint-disable-next-line no-param-reassign
-    event.returnValue = remoteApiLegacy;
-  }
-});
+app.addListener(
+  'remote-require',
+  (
+    event: { returnValue: RemoteApiLegacy },
+    _webContents: unknown,
+    moduleName: string,
+  ) => {
+    if (moduleName === './index.js') {
+      // eslint-disable-next-line no-param-reassign
+      event.returnValue = remoteApiLegacy;
+    }
+  },
+);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-ipcMain.handle('__electron_rpc__', async (_event, method: keyof RemoteApi, args: any[]) => {
-  const fn = remoteApi[method];
-  assert(fn, `Unknown API method: ${method}`);
-  // @ts-expect-error don't know how to type
-  return fn(...args);
-});
+ipcMain.handle(
+  '__electron_rpc__',
+  async (_event, method: keyof RemoteApi, args: any[]) => {
+    const fn = remoteApi[method];
+    assert(fn, `Unknown API method: ${method}`);
+    // @ts-expect-error don't know how to type
+    return fn(...args);
+  },
+);
 
 // cannot top level await because app.whenReady will hang forever
 // eslint-disable-next-line unicorn/prefer-top-level-await
