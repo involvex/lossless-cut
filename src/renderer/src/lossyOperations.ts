@@ -1,10 +1,10 @@
-import { formatFfmpegNumber } from "../../common/util";
+import { formatFfmpegNumber } from '../../common/util';
 import type {
   LossyMode,
   VideoEncoder,
   AudioEncoder,
   HwAccel,
-} from "../../common/types";
+} from '../../common/types';
 
 export interface BuildLossyFfmpegArgsParams {
   inputPath: string;
@@ -20,7 +20,7 @@ export interface BuildLossyFfmpegArgsParams {
   outFormat: string;
   shortestFlag: boolean;
   ffmpegExperimental: boolean;
-  preserveMetadata: "default" | "nonglobal" | "none";
+  preserveMetadata: 'default' | 'nonglobal' | 'none';
   preserveMovData: boolean;
   preserveChapters: boolean;
   movFastStart: boolean;
@@ -29,16 +29,16 @@ export interface BuildLossyFfmpegArgsParams {
 }
 
 const movencFormats = new Set([
-  "3g2",
-  "3gp",
-  "f4v",
-  "ipod",
-  "ismv",
-  "mov",
-  "mp4",
-  "psp",
+  '3g2',
+  '3gp',
+  'f4v',
+  'ipod',
+  'ismv',
+  'mov',
+  'mp4',
+  'psp',
 ]);
-const matroskaencFormats = new Set(["matroska", "webm"]);
+const matroskaencFormats = new Set(['matroska', 'webm']);
 
 function getMovFlags({
   outFormat,
@@ -51,37 +51,37 @@ function getMovFlags({
 }) {
   if (outFormat != null && !movencFormats.has(outFormat)) return [];
   const flags: string[] = [];
-  if (preserveMovData) flags.push("use_metadata_tags");
-  if (movFastStart) flags.push("+faststart");
+  if (preserveMovData) flags.push('use_metadata_tags');
+  if (movFastStart) flags.push('+faststart');
   if (flags.length === 0) return [];
-  return flags.flatMap((flag) => ["-movflags", flag]);
+  return flags.flatMap((flag) => ['-movflags', flag]);
 }
 
 function getMatroskaFlags(outFormat: string | undefined) {
   if (outFormat != null && !matroskaencFormats.has(outFormat)) return [];
-  return ["-default_mode", "infer_no_subs"];
+  return ['-default_mode', 'infer_no_subs'];
 }
 
 function getExperimentalArgs(ffmpegExperimental: boolean) {
-  return ffmpegExperimental ? ["-strict", "experimental"] : [];
+  return ffmpegExperimental ? ['-strict', 'experimental'] : [];
 }
 
 function getVideoTimescaleArgs(videoTimebase: number | undefined) {
   return videoTimebase != null
-    ? ["-video_track_timescale", String(videoTimebase)]
+    ? ['-video_track_timescale', String(videoTimebase)]
     : [];
 }
 
 function getHwaccelDecodeArgs(hwaccel: HwAccel | undefined): string[] {
-  if (!hwaccel || hwaccel === "none" || hwaccel === "auto") return [];
+  if (!hwaccel || hwaccel === 'none' || hwaccel === 'auto') return [];
   const map: Record<HwAccel, string[]> = {
-    nvenc: ["-hwaccel", "cuda"],
-    qsv: ["-hwaccel", "qsv"],
-    videotoolbox: ["-hwaccel", "videotoolbox"],
-    vaapi: ["-hwaccel", "vaapi"],
-    vdpau: ["-hwaccel", "vdpau"],
-    dxva2: ["-hwaccel", "dxva2"],
-    d3d11va: ["-hwaccel", "d3d11va"],
+    nvenc: ['-hwaccel', 'cuda'],
+    qsv: ['-hwaccel', 'qsv'],
+    videotoolbox: ['-hwaccel', 'videotoolbox'],
+    vaapi: ['-hwaccel', 'vaapi'],
+    vdpau: ['-hwaccel', 'vdpau'],
+    dxva2: ['-hwaccel', 'dxva2'],
+    d3d11va: ['-hwaccel', 'd3d11va'],
     none: [],
     auto: [],
   };
@@ -92,27 +92,27 @@ function getEncoderName(
   encoder: VideoEncoder | undefined,
   hwaccel: HwAccel | undefined,
 ): string {
-  if (!encoder) return "libx264";
-  if (hwaccel && hwaccel !== "none" && hwaccel !== "auto") return encoder;
+  if (!encoder) return 'libx264';
+  if (hwaccel && hwaccel !== 'none' && hwaccel !== 'auto') return encoder;
   return encoder;
 }
 
 function getAudioEncoderName(encoder: AudioEncoder | undefined): string {
-  return encoder ?? "aac";
+  return encoder ?? 'aac';
 }
 
 function buildVideoFilterChain(
   filters: string[] | undefined,
 ): string | undefined {
   if (!filters || filters.length === 0) return undefined;
-  return filters.join(",");
+  return filters.join(',');
 }
 
 function buildAudioFilterChain(
   filters: string[] | undefined,
 ): string | undefined {
   if (!filters || filters.length === 0) return undefined;
-  return filters.join(",");
+  return filters.join(',');
 }
 
 export function buildLossyFfmpegArgs({
@@ -156,7 +156,7 @@ export function buildLossyFfmpegArgs({
   } = lossyMode;
 
   const effectiveOutFormat = outputFormat ?? outFormat;
-  const isGif = effectiveOutFormat === "gif";
+  const isGif = effectiveOutFormat === 'gif';
 
   const cuttingStart = cutFrom > 0;
   const cuttingEnd = fileDuration != null && cutTo < fileDuration;
@@ -173,111 +173,110 @@ export function buildLossyFfmpegArgs({
   const videoEncoderName = getEncoderName(videoEncoder, hwaccel);
   const audioEncoderName = getAudioEncoderName(audioEncoder);
 
-  const args: string[] = ["-hide_banner", "-y", ...hwaccelDecodeArgs];
+  const args: string[] = ['-hide_banner', '-y', ...hwaccelDecodeArgs];
 
   if (cuttingStart) {
-    args.push("-ss", formatFfmpegNumber(cutFrom));
+    args.push('-ss', formatFfmpegNumber(cutFrom));
   }
 
-  args.push("-i", inputPath);
+  args.push('-i', inputPath);
 
   if (!cuttingStart) {
-    args.push("-ss", formatFfmpegNumber(cutFrom));
+    args.push('-ss', formatFfmpegNumber(cutFrom));
   }
 
   if (cuttingEnd) {
-    args.push("-t", formatFfmpegNumber(cutDuration));
+    args.push('-t', formatFfmpegNumber(cutDuration));
   }
 
   if (rotation !== undefined) {
-    args.push("-display_rotation:v:0", String(360 - rotation));
+    args.push('-display_rotation:v:0', String(360 - rotation));
   }
 
   if (isGif) {
     const fps = gifFps ?? 10;
     const scale = gifScale ?? 1;
-    const scaleFilter =
-      scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
+    const scaleFilter = scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
     const paletteFilters = [`fps=${fps}`, scaleFilter]
       .filter(Boolean)
-      .join(",");
+      .join(',');
 
     // Two-pass GIF encoding
     args.push(
-      "-filter_complex",
+      '-filter_complex',
       `[0:v]${paletteFilters},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`,
-      "-f",
-      "gif",
+      '-f',
+      'gif',
     );
   } else {
     // Video encoding
     if (videoStreamIndex != null) {
-      const videoArgs: string[] = ["-c:v", videoEncoderName];
+      const videoArgs: string[] = ['-c:v', videoEncoderName];
 
       if (videoBitrate) {
-        videoArgs.push("-b:v", String(videoBitrate));
+        videoArgs.push('-b:v', String(videoBitrate));
       } else if (videoCrf != null) {
-        videoArgs.push("-crf", String(videoCrf));
+        videoArgs.push('-crf', String(videoCrf));
       }
 
-      if (videoPreset) videoArgs.push("-preset", videoPreset);
-      if (videoProfile) videoArgs.push("-profile:v", videoProfile);
-      if (videoLevel) videoArgs.push("-level", videoLevel);
+      if (videoPreset) videoArgs.push('-preset', videoPreset);
+      if (videoProfile) videoArgs.push('-profile:v', videoProfile);
+      if (videoLevel) videoArgs.push('-level', videoLevel);
 
       if (videoFilterChain) {
-        videoArgs.push("-vf", videoFilterChain);
+        videoArgs.push('-vf', videoFilterChain);
       }
 
       args.push(...videoArgs);
     } else {
-      args.push("-vn");
+      args.push('-vn');
     }
 
     // Audio encoding
     if (audioStreamIndexes.size > 0) {
-      const audioArgs: string[] = ["-c:a", audioEncoderName];
+      const audioArgs: string[] = ['-c:a', audioEncoderName];
 
-      if (audioBitrate) audioArgs.push("-b:a", String(audioBitrate));
-      if (audioChannels) audioArgs.push("-ac", String(audioChannels));
-      if (audioSampleRate) audioArgs.push("-ar", String(audioSampleRate));
+      if (audioBitrate) audioArgs.push('-b:a', String(audioBitrate));
+      if (audioChannels) audioArgs.push('-ac', String(audioChannels));
+      if (audioSampleRate) audioArgs.push('-ar', String(audioSampleRate));
 
       if (audioFilterChain) {
-        audioArgs.push("-af", audioFilterChain);
+        audioArgs.push('-af', audioFilterChain);
       }
 
       args.push(...audioArgs);
     } else {
-      args.push("-an");
+      args.push('-an');
     }
 
     // Subtitles - copy by default
     if (subtitleStreamIndexes.size > 0) {
-      args.push("-c:s", "copy");
+      args.push('-c:s', 'copy');
     } else {
-      args.push("-sn");
+      args.push('-sn');
     }
 
     // Map streams
     for (const { streamIds } of copyFileStreams) {
       for (const streamId of streamIds) {
-        args.push("-map", `0:${streamId}`);
+        args.push('-map', `0:${streamId}`);
       }
     }
 
     // Metadata preservation
     switch (preserveMetadata) {
-      case "default": {
-        args.push("-map_metadata", "0");
+      case 'default': {
+        args.push('-map_metadata', '0');
 
         break;
       }
-      case "none": {
-        args.push("-map_metadata", "-1");
+      case 'none': {
+        args.push('-map_metadata', '-1');
 
         break;
       }
-      case "nonglobal": {
-        args.push("-map_metadata:g", "-1");
+      case 'nonglobal': {
+        args.push('-map_metadata:g', '-1');
 
         break;
       }
@@ -285,13 +284,13 @@ export function buildLossyFfmpegArgs({
     }
 
     if (preserveChapters && chaptersPath) {
-      args.push("-map_chapters", String(copyFileStreams.length));
+      args.push('-map_chapters', String(copyFileStreams.length));
     } else if (!preserveChapters) {
-      args.push("-map_chapters", "-1");
+      args.push('-map_chapters', '-1');
     }
 
     if (shortestFlag) {
-      args.push("-shortest");
+      args.push('-shortest');
     }
 
     args.push(
@@ -301,13 +300,13 @@ export function buildLossyFfmpegArgs({
         movFastStart,
       }),
       ...getMatroskaFlags(effectiveOutFormat),
-      "-ignore_unknown",
+      '-ignore_unknown',
       ...getExperimentalArgs(ffmpegExperimental),
       ...getVideoTimescaleArgs(undefined),
     );
   }
 
-  args.push("-f", effectiveOutFormat, outputPath);
+  args.push('-f', effectiveOutFormat, outputPath);
   return args;
 }
 
@@ -320,52 +319,51 @@ export function buildGifFirstPassArgs({
   fileDuration,
 }: Omit<
   BuildLossyFfmpegArgsParams,
-  | "audioStreamIndexes"
-  | "subtitleStreamIndexes"
-  | "copyFileStreams"
-  | "outFormat"
-  | "shortestFlag"
-  | "ffmpegExperimental"
-  | "preserveMetadata"
-  | "preserveMovData"
-  | "preserveChapters"
-  | "movFastStart"
-  | "rotation"
-  | "chaptersPath"
-  | "videoStreamIndex"
+  | 'audioStreamIndexes'
+  | 'subtitleStreamIndexes'
+  | 'copyFileStreams'
+  | 'outFormat'
+  | 'shortestFlag'
+  | 'ffmpegExperimental'
+  | 'preserveMetadata'
+  | 'preserveMovData'
+  | 'preserveChapters'
+  | 'movFastStart'
+  | 'rotation'
+  | 'chaptersPath'
+  | 'videoStreamIndex'
 >): string[] {
   const { gifFps, gifScale, hwaccel } = lossyMode;
   const fps = gifFps ?? 10;
   const scale = gifScale ?? 1;
-  const scaleFilter =
-    scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
-  const paletteFilters = [`fps=${fps}`, scaleFilter].filter(Boolean).join(",");
+  const scaleFilter = scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
+  const paletteFilters = [`fps=${fps}`, scaleFilter].filter(Boolean).join(',');
 
   const hwaccelDecodeArgs = getHwaccelDecodeArgs(hwaccel);
 
-  const args: string[] = ["-hide_banner", "-y", ...hwaccelDecodeArgs];
+  const args: string[] = ['-hide_banner', '-y', ...hwaccelDecodeArgs];
 
   if (cutFrom > 0) {
-    args.push("-ss", formatFfmpegNumber(cutFrom));
+    args.push('-ss', formatFfmpegNumber(cutFrom));
   }
 
-  args.push("-i", inputPath);
+  args.push('-i', inputPath);
 
   if (cutFrom > 0) {
-    args.push("-ss", "0");
+    args.push('-ss', '0');
   }
 
   if (fileDuration != null && cutTo < fileDuration) {
-    args.push("-t", formatFfmpegNumber(cutTo - cutFrom));
+    args.push('-t', formatFfmpegNumber(cutTo - cutFrom));
   }
 
   args.push(
-    "-filter_complex",
+    '-filter_complex',
     `[0:v]${paletteFilters},palettegen`,
-    "-f",
-    "image2",
-    "-vcodec",
-    "png",
+    '-f',
+    'image2',
+    '-vcodec',
+    'png',
     outputPath,
   );
 
@@ -392,33 +390,32 @@ export function buildGifSecondPassArgs({
   const { gifFps, gifScale, hwaccel } = lossyMode;
   const fps = gifFps ?? 10;
   const scale = gifScale ?? 1;
-  const scaleFilter =
-    scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
-  const paletteFilters = [`fps=${fps}`, scaleFilter].filter(Boolean).join(",");
+  const scaleFilter = scale !== 1 ? `scale=iw*${scale}:ih*${scale}:flags=lanczos` : undefined;
+  const paletteFilters = [`fps=${fps}`, scaleFilter].filter(Boolean).join(',');
 
   const hwaccelDecodeArgs = getHwaccelDecodeArgs(hwaccel);
 
-  const args: string[] = ["-hide_banner", "-y", ...hwaccelDecodeArgs];
+  const args: string[] = ['-hide_banner', '-y', ...hwaccelDecodeArgs];
 
   if (cutFrom > 0) {
-    args.push("-ss", formatFfmpegNumber(cutFrom));
+    args.push('-ss', formatFfmpegNumber(cutFrom));
   }
 
-  args.push("-i", inputPath, "-i", palettePath);
+  args.push('-i', inputPath, '-i', palettePath);
 
   if (cutFrom > 0) {
-    args.push("-ss", "0");
+    args.push('-ss', '0');
   }
 
   if (fileDuration != null && cutTo < fileDuration) {
-    args.push("-t", formatFfmpegNumber(cutTo - cutFrom));
+    args.push('-t', formatFfmpegNumber(cutTo - cutFrom));
   }
 
   args.push(
-    "-filter_complex",
+    '-filter_complex',
     `[0:v]${paletteFilters}[1:v]paletteuse`,
-    "-f",
-    "gif",
+    '-f',
+    'gif',
     outputPath,
   );
 
@@ -427,127 +424,127 @@ export function buildGifSecondPassArgs({
 
 export function getDefaultLossyMode(): LossyMode {
   return {
-    videoEncoder: "libx264",
+    videoEncoder: 'libx264',
     videoCrf: 23,
-    videoPreset: "medium",
-    audioEncoder: "aac",
+    videoPreset: 'medium',
+    audioEncoder: 'aac',
     audioBitrate: 128000,
     gifFps: 10,
     gifScale: 1,
-    hwaccel: "auto",
+    hwaccel: 'auto',
   };
 }
 
 export function getPresetLossyMode(preset: string): LossyMode {
   const presets: Record<string, LossyMode> = {
-    "youtube-1080p": {
-      videoEncoder: "libx264",
+    'youtube-1080p': {
+      videoEncoder: 'libx264',
       videoBitrate: 8000000,
-      videoPreset: "slow",
-      videoProfile: "high",
-      videoLevel: "4.2",
-      audioEncoder: "aac",
+      videoPreset: 'slow',
+      videoProfile: 'high',
+      videoLevel: '4.2',
+      audioEncoder: 'aac',
       audioBitrate: 192000,
       audioChannels: 2,
       audioSampleRate: 48000,
-      outputFormat: "mp4",
+      outputFormat: 'mp4',
       movFastStart: true,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
-    "youtube-4k": {
-      videoEncoder: "libx265",
+    'youtube-4k': {
+      videoEncoder: 'libx265',
       videoBitrate: 35000000,
-      videoPreset: "slow",
-      videoProfile: "main",
-      videoLevel: "5.1",
-      audioEncoder: "aac",
+      videoPreset: 'slow',
+      videoProfile: 'main',
+      videoLevel: '5.1',
+      audioEncoder: 'aac',
       audioBitrate: 320000,
       audioChannels: 2,
       audioSampleRate: 48000,
-      outputFormat: "mp4",
+      outputFormat: 'mp4',
       movFastStart: true,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
-    "instagram-reel": {
-      videoEncoder: "libx264",
+    'instagram-reel': {
+      videoEncoder: 'libx264',
       videoBitrate: 3500000,
-      videoPreset: "medium",
-      videoProfile: "high",
-      videoLevel: "4.1",
+      videoPreset: 'medium',
+      videoProfile: 'high',
+      videoLevel: '4.1',
       videoFilters: [
-        "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+        'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
       ],
-      audioEncoder: "aac",
+      audioEncoder: 'aac',
       audioBitrate: 128000,
       audioChannels: 2,
       audioSampleRate: 44100,
-      outputFormat: "mp4",
+      outputFormat: 'mp4',
       movFastStart: true,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
     tiktok: {
-      videoEncoder: "libx264",
+      videoEncoder: 'libx264',
       videoBitrate: 4000000,
-      videoPreset: "medium",
-      videoProfile: "high",
-      videoLevel: "4.1",
+      videoPreset: 'medium',
+      videoProfile: 'high',
+      videoLevel: '4.1',
       videoFilters: [
-        "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2",
+        'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
       ],
-      audioEncoder: "aac",
+      audioEncoder: 'aac',
       audioBitrate: 128000,
       audioChannels: 2,
       audioSampleRate: 44100,
-      outputFormat: "mp4",
+      outputFormat: 'mp4',
       movFastStart: true,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
     twitter: {
-      videoEncoder: "libx264",
+      videoEncoder: 'libx264',
       videoBitrate: 5000000,
-      videoPreset: "medium",
-      videoProfile: "high",
-      videoLevel: "4.1",
-      audioEncoder: "aac",
+      videoPreset: 'medium',
+      videoProfile: 'high',
+      videoLevel: '4.1',
+      audioEncoder: 'aac',
       audioBitrate: 128000,
       audioChannels: 2,
       audioSampleRate: 44100,
-      outputFormat: "mp4",
+      outputFormat: 'mp4',
       movFastStart: true,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
     gif: {
-      outputFormat: "gif",
+      outputFormat: 'gif',
       gifFps: 10,
       gifScale: 0.5,
-      hwaccel: "auto",
+      hwaccel: 'auto',
     },
     archive: {
-      videoEncoder: "ffv1",
-      videoProfile: "main",
-      audioEncoder: "flac",
+      videoEncoder: 'ffv1',
+      videoProfile: 'main',
+      audioEncoder: 'flac',
       audioChannels: 2,
       audioSampleRate: 48000,
-      outputFormat: "mkv",
-      hwaccel: "none",
+      outputFormat: 'mkv',
+      hwaccel: 'none',
     },
-    "audio-only-opus": {
+    'audio-only-opus': {
       videoEncoder: undefined,
-      audioEncoder: "libopus",
+      audioEncoder: 'libopus',
       audioBitrate: 128000,
       audioChannels: 2,
       audioSampleRate: 48000,
-      outputFormat: "opus",
-      hwaccel: "none",
+      outputFormat: 'opus',
+      hwaccel: 'none',
     },
-    "audio-only-mp3": {
+    'audio-only-mp3': {
       videoEncoder: undefined,
-      audioEncoder: "libmp3lame",
+      audioEncoder: 'libmp3lame',
       audioBitrate: 192000,
       audioChannels: 2,
       audioSampleRate: 44100,
-      outputFormat: "mp3",
-      hwaccel: "none",
+      outputFormat: 'mp3',
+      hwaccel: 'none',
     },
   };
 

@@ -12,30 +12,30 @@ import electron, {
   ipcMain,
   Notification,
   type NotificationConstructorOptions,
-} from 'electron';
-import i18n from 'i18next';
-import debounce from 'lodash.debounce/index.js';
-import yargsParser from 'yargs-parser';
-import JSON5 from 'json5';
-import remote from '@electron/remote/main/index.js';
-import { stat } from 'node:fs/promises';
-import assert from 'node:assert';
-import timers from 'node:timers/promises';
-import { z } from 'zod';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import electronUnhandled from 'electron-unhandled';
-import { fileTypeFromFile } from 'file-type';
-import type { Asyncify } from 'type-fest';
+} from "electron";
+import i18n from "i18next";
+import debounce from "lodash.debounce/index.js";
+import yargsParser from "yargs-parser";
+import JSON5 from "json5";
+import remote from "@electron/remote/main/index.js";
+import { stat } from "node:fs/promises";
+import assert from "node:assert";
+import timers from "node:timers/promises";
+import { z } from "zod";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import electronUnhandled from "electron-unhandled";
+import { fileTypeFromFile } from "file-type";
+import type { Asyncify } from "type-fest";
 // eslint-disable-next-line import/no-extraneous-dependencies
 import {
   installExtension,
   REACT_DEVELOPER_TOOLS,
-} from 'electron-devtools-installer';
-import mitt from 'mitt';
+} from "electron-devtools-installer";
+import mitt from "mitt";
 
-import logger from './logger.js';
-import menu from './menu.js';
-import * as configStore from './configStore.js';
+import logger from "./logger.js";
+import menu from "./menu.js";
+import * as configStore from "./configStore.js";
 import {
   isLinux,
   isWindows,
@@ -43,31 +43,33 @@ import {
   platform,
   arch,
   pathExists,
-} from './util.js';
-import { appName } from './common.js';
-import attachContextMenu from './contextMenu.js';
-import HttpServer from './httpServer.js';
-import isDev from './isDev.js';
-import isStoreBuild from './isStoreBuild.js';
-import { getAboutPanelOptions } from './aboutPanel.js';
-import { checkNewVersion } from './updateChecker.js';
-import * as i18nCommon from './i18nCommon.js';
-import './i18n.js';
-import type { ApiActionRequest } from '../common/types.js';
-import * as ffmpeg from './ffmpeg.js';
-import * as compatPlayer from './compatPlayer.js';
-import { downloadMediaUrl } from './ffmpeg.js';
-import { hasDisabledNetworking, setDisableNetworking } from './networking.js';
+} from "./util.js";
+import { appName } from "./common.js";
+import attachContextMenu from "./contextMenu.js";
+import HttpServer from "./httpServer.js";
+import isDev from "./isDev.js";
+import isStoreBuild from "./isStoreBuild.js";
+import { getAboutPanelOptions } from "./aboutPanel.js";
+import { checkNewVersion } from "./updateChecker.js";
+import * as i18nCommon from "./i18nCommon.js";
+import "./i18n.js";
+import type { ApiActionRequest, WatchFolder } from "../common/types.js";
+import * as ffmpeg from "./ffmpeg.js";
+import * as compatPlayer from "./compatPlayer.js";
+import { downloadMediaUrl } from "./ffmpeg.js";
+import { hasDisabledNetworking, setDisableNetworking } from "./networking.js";
+import { watch } from "node:fs";
+import { resolve } from "node:path";
 
 electronUnhandled({
   showDialog: true,
-  logger: (err) => logger.error('electron-unhandled', err),
+  logger: (err) => logger.error("electron-unhandled", err),
 });
 
 // https://chromestatus.com/feature/5748496434987008
 // https://peter.sh/experiments/chromium-command-line-switches/
 // https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/platform/runtime_enabled_features.json5
-app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
+app.commandLine.appendSwitch("enable-blink-features", "AudioVideoTracks");
 
 remote.initialize();
 
@@ -90,7 +92,69 @@ let askBeforeClose = false;
 let rendererReady = false;
 let newVersion: string | undefined;
 
-const openFiles = (paths: string[]) => mainWindow!.webContents.send('openFiles', paths);
+// Watch folders functionality (module level for remoteApi access)
+const watchers = new Map<string, ReturnType<typeof watch>>();
+
+function startWatchFolder(folderPath: string) {
+  const resolvedPath = resolve(folderPath);
+  if (watchers.has(resolvedPath)) return;
+
+  try {
+    const watcher = watch(
+      resolvedPath,
+      { recursive: true },
+      (eventType, filename) => {
+        if (!filename) return;
+        if (eventType !== "rename") return; // Only care about new files
+
+        const filePath = resolve(resolvedPath, filename);
+        // Check if it's a media file
+        const mediaExtensions = [
+          ".mp4",
+          ".mov",
+          ".mkv",
+          ".avi",
+          ".webm",
+          ".flv",
+          ".wmv",
+          ".m4v",
+          ".mp3",
+          ".wav",
+          ".flac",
+          ".aac",
+          ".ogg",
+          ".m4a",
+        ];
+        const ext = filePath.toLowerCase().slice(filePath.lastIndexOf("."));
+        if (!mediaExtensions.includes(ext)) return;
+
+        logger.info("Watch folder detected new file", filePath);
+        mainWindow?.webContents.send("watchFolderNewFile", {
+          folderPath: resolvedPath,
+          filePath,
+        });
+      },
+    );
+
+    watchers.set(resolvedPath, watcher);
+    logger.info("Started watching folder", resolvedPath);
+  } catch (err) {
+    logger.error("Failed to watch folder", resolvedPath, err);
+  }
+}
+
+function stopWatchFolder(folderPath: string) {
+  const resolvedPath = resolve(folderPath);
+  const watcher = watchers.get(resolvedPath);
+  if (watcher) {
+    watcher.close();
+    watchers.delete(resolvedPath);
+    logger.info("Stopped watching folder", resolvedPath);
+  }
+}
+
+const openFiles = (paths: string[]) =>
+  mainWindow!.webContents.send("openFiles", paths);
 
 let apiActionRequestsId = 0;
 const apiActionRequests = new Map<number, () => void>();
@@ -99,61 +163,61 @@ async function sendApiAction(action: string, args?: unknown[]) {
   try {
     const id = apiActionRequestsId;
     apiActionRequestsId += 1;
-    mainWindow!.webContents.send('apiAction', {
+    mainWindow!.webContents.send("apiAction", {
       id,
       action,
       args,
     } satisfies ApiActionRequest);
     await new Promise<void>((resolve) => apiActionRequests.set(id, resolve));
   } catch (err) {
-    logger.error('sendApiAction', err);
+    logger.error("sendApiAction", err);
   }
 }
 
 export type AppEvent =
   | {
-      eventName: 'export-complete';
+      eventName: "export-complete";
       paths?: string[];
     }
   | {
-      eventName: 'export-start';
+      eventName: "export-start";
       path: string;
     };
 
 const appEventEmitter = mitt<{ appEvent: AppEvent }>();
 
-ipcMain.on('appEvent', (_e, appEvent: AppEvent) => {
-  appEventEmitter.emit('appEvent', appEvent);
+ipcMain.on("appEvent", (_e, appEvent: AppEvent) => {
+  appEventEmitter.emit("appEvent", appEvent);
 });
 
 async function onAwaitAppEvent(awaitEventName: string, signal: AbortSignal) {
   return new Promise<AppEvent>((resolve, reject) => {
     const handler = (appEvent: AppEvent) => {
       if (appEvent.eventName === awaitEventName) {
-        appEventEmitter.off('appEvent', handler);
+        appEventEmitter.off("appEvent", handler);
         resolve(appEvent);
       }
     };
-    appEventEmitter.on('appEvent', handler);
-    signal.addEventListener('abort', () => {
-      appEventEmitter.off('appEvent', handler);
-      reject(new Error('Aborted'));
+    appEventEmitter.on("appEvent", handler);
+    signal.addEventListener("abort", () => {
+      appEventEmitter.off("appEvent", handler);
+      reject(new Error("Aborted"));
     });
   });
 }
 
 // https://github.com/electron/electron/issues/526#issuecomment-563010533
 function getSavedBounds() {
-  const bounds = configStore.get('windowBounds');
+  const bounds = configStore.get("windowBounds");
   const options: BrowserWindowConstructorOptions = {};
   if (bounds) {
     const area = electron.screen.getDisplayMatching(bounds).workArea;
     // If the saved position still valid (the window is entirely inside the display area), use it.
     if (
-      bounds.x >= area.x
-      && bounds.y >= area.y
-      && bounds.x + bounds.width <= area.x + area.width
-      && bounds.y + bounds.height <= area.y + area.height
+      bounds.x >= area.x &&
+      bounds.y >= area.y &&
+      bounds.x + bounds.width <= area.x + area.width &&
+      bounds.y + bounds.height <= area.y + area.height
     ) {
       options.x = bounds.x;
       options.y = bounds.y;
@@ -171,10 +235,10 @@ function getSavedBounds() {
 }
 
 function createWindow() {
-  const darkMode = configStore.get('darkMode');
+  const darkMode = configStore.get("darkMode");
   // todo follow darkMode setting when user switches
   // https://www.electronjs.org/docs/latest/tutorial/dark-mode
-  if (darkMode) nativeTheme.themeSource = 'dark';
+  if (darkMode) nativeTheme.themeSource = "dark";
 
   const savedBounds = getSavedBounds();
 
@@ -186,9 +250,9 @@ function createWindow() {
       nodeIntegration: true,
       // https://github.com/electron/electron/issues/5107
       webSecurity: !isDev,
-      preload: fileURLToPath(new URL('../preload/index.cjs', import.meta.url)),
+      preload: fileURLToPath(new URL("../preload/index.cjs", import.meta.url)),
     },
-    backgroundColor: darkMode ? '#333' : '#fff',
+    backgroundColor: darkMode ? "#333" : "#fff",
     minWidth: 300,
     minHeight: 300,
   });
@@ -199,15 +263,15 @@ function createWindow() {
 
   attachContextMenu(mainWindow);
 
-  if (isDev) mainWindow.loadURL('http://localhost:3001');
+  if (isDev) mainWindow.loadURL("http://localhost:3001");
   // Need to useloadFile for special characters https://github.com/mifi/lossless-cut/issues/40
-  else mainWindow.loadFile('out/renderer/index.html');
+  else mainWindow.loadFile("out/renderer/index.html");
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
 
   // Emitted when the window is closed.
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
@@ -215,15 +279,15 @@ function createWindow() {
   });
 
   // https://stackoverflow.com/questions/39574636/prompt-to-save-quit-before-closing-window/47434365
-  mainWindow.on('close', (e) => {
+  mainWindow.on("close", (e) => {
     if (!askBeforeClose) return;
 
     assert(mainWindow);
     const choice = electron.dialog.showMessageBoxSync(mainWindow, {
-      type: 'question',
-      buttons: ['Yes', 'No'],
-      title: i18n.t('Confirm quit'),
-      message: i18n.t('Are you sure you want to quit?'),
+      type: "question",
+      buttons: ["Yes", "No"],
+      title: i18n.t("Confirm quit"),
+      message: i18n.t("Are you sure you want to quit?"),
     });
     if (choice === 1) {
       e.preventDefault();
@@ -232,21 +296,21 @@ function createWindow() {
 
   // TODO replace with `windowStatePersistence` in the future? https://github.com/electron/rfcs/pull/16
   const debouncedSaveWindowState = debounce(() => {
-    if (!mainWindow || !configStore.get('storeWindowBounds')) return;
+    if (!mainWindow || !configStore.get("storeWindowBounds")) return;
     const { x, y, width, height } = mainWindow.getNormalBounds();
     const isMaximized = mainWindow.isMaximized();
-    configStore.set('windowBounds', { x, y, width, height, isMaximized });
+    configStore.set("windowBounds", { x, y, width, height, isMaximized });
   }, 500);
 
-  mainWindow.on('maximize', debouncedSaveWindowState);
-  mainWindow.on('unmaximize', debouncedSaveWindowState);
-  mainWindow.on('resize', debouncedSaveWindowState);
-  mainWindow.on('move', debouncedSaveWindowState);
+  mainWindow.on("maximize", debouncedSaveWindowState);
+  mainWindow.on("unmaximize", debouncedSaveWindowState);
+  mainWindow.on("resize", debouncedSaveWindowState);
+  mainWindow.on("move", debouncedSaveWindowState);
 }
 
 async function openExternal(url: string) {
   if (hasDisabledNetworking()) {
-    logger.warn('openExternal blocked because networking is disabled', url);
+    logger.warn("openExternal blocked because networking is disabled", url);
     return;
   }
   await shell.openExternal(url);
@@ -264,7 +328,7 @@ async function changeLanguage(language: string | null) {
     // https://www.electronjs.org/docs/latest/api/app#appsetaboutpaneloptionsoptions
     app.setAboutPanelOptions(getAboutPanelOptions());
   } catch (err) {
-    logger.error('Failed to set language', err);
+    logger.error("Failed to set language", err);
   }
 }
 
@@ -281,11 +345,34 @@ function parseCliArgs(rawArgv = process.argv) {
   const ignoreFirstArgs = process.defaultApp ? 2 : 1;
   // production: First arg is the LosslessCut executable
   // dev: First 2 args are electron and the index.js
-  const argsWithoutAppName = rawArgv.length > ignoreFirstArgs ? rawArgv.slice(ignoreFirstArgs) : [];
+  const argsWithoutAppName =
+    rawArgv.length > ignoreFirstArgs ? rawArgv.slice(ignoreFirstArgs) : [];
 
   return yargsParser(argsWithoutAppName, {
-    boolean: ['disable-networking'],
-    string: ['settings-json', 'config-dir', 'lossy-mode'],
+    boolean: [
+      "disable-networking",
+      "batch-export",
+      "watch-daemon",
+      "queue-process",
+      "queue-clear",
+    ],
+    string: [
+      "settings-json",
+      "config-dir",
+      "lossy-mode",
+      "template-apply",
+      "export-queue",
+      "project-template",
+    ],
+    alias: {
+      "batch-export": "be",
+      "watch-daemon": "wd",
+      "queue-process": "qp",
+      "queue-clear": "qc",
+      "template-apply": "ta",
+      "export-queue": "eq",
+      "project-template": "pt",
+    },
   });
 }
 
@@ -295,30 +382,30 @@ const lossyModeSchema = z.object({
   // Video encoding
   videoEncoder: z
     .union([
-      z.literal('libx264'),
-      z.literal('libx265'),
-      z.literal('libsvtav1'),
-      z.literal('h264_nvenc'),
-      z.literal('hevc_nvenc'),
-      z.literal('h264_qsv'),
-      z.literal('hevc_qsv'),
-      z.literal('h264_videotoolbox'),
-      z.literal('hevc_videotoolbox'),
+      z.literal("libx264"),
+      z.literal("libx265"),
+      z.literal("libsvtav1"),
+      z.literal("h264_nvenc"),
+      z.literal("hevc_nvenc"),
+      z.literal("h264_qsv"),
+      z.literal("hevc_qsv"),
+      z.literal("h264_videotoolbox"),
+      z.literal("hevc_videotoolbox"),
     ])
     .optional(),
   videoBitrate: z.number().optional(),
   videoCrf: z.number().optional(),
   videoPreset: z
     .union([
-      z.literal('ultrafast'),
-      z.literal('superfast'),
-      z.literal('veryfast'),
-      z.literal('faster'),
-      z.literal('fast'),
-      z.literal('medium'),
-      z.literal('slow'),
-      z.literal('slower'),
-      z.literal('veryslow'),
+      z.literal("ultrafast"),
+      z.literal("superfast"),
+      z.literal("veryfast"),
+      z.literal("faster"),
+      z.literal("fast"),
+      z.literal("medium"),
+      z.literal("slow"),
+      z.literal("slower"),
+      z.literal("veryslow"),
     ])
     .optional(),
   videoProfile: z.string().optional(),
@@ -328,12 +415,12 @@ const lossyModeSchema = z.object({
   // Audio encoding
   audioEncoder: z
     .union([
-      z.literal('aac'),
-      z.literal('libmp3lame'),
-      z.literal('libopus'),
-      z.literal('flac'),
-      z.literal('ac3'),
-      z.literal('eac3'),
+      z.literal("aac"),
+      z.literal("libmp3lame"),
+      z.literal("libopus"),
+      z.literal("flac"),
+      z.literal("ac3"),
+      z.literal("eac3"),
     ])
     .optional(),
   audioBitrate: z.number().optional(),
@@ -348,26 +435,27 @@ const lossyModeSchema = z.object({
   outputFormat: z.string().optional(),
   hwaccel: z
     .union([
-      z.literal('none'),
-      z.literal('auto'),
-      z.literal('nvenc'),
-      z.literal('qsv'),
-      z.literal('videotoolbox'),
-      z.literal('vaapi'),
-      z.literal('vdpau'),
-      z.literal('dxva2'),
-      z.literal('d3d11va'),
+      z.literal("none"),
+      z.literal("auto"),
+      z.literal("nvenc"),
+      z.literal("qsv"),
+      z.literal("videotoolbox"),
+      z.literal("vaapi"),
+      z.literal("vdpau"),
+      z.literal("dxva2"),
+      z.literal("d3d11va"),
     ])
     .optional(),
 });
 // eslint-disable-next-line prefer-destructuring
-const lossyMode = argv['lossyMode']
-  ? lossyModeSchema.parse(JSON5.parse(argv['lossyMode']))
+const lossyMode = argv["lossyMode"]
+  ? lossyModeSchema.parse(JSON5.parse(argv["lossyMode"]))
   : undefined;
 
 export type LossyMode = z.infer<typeof lossyModeSchema>;
 
-if (argv['localesPath'] != null) i18nCommon.setCustomLocalesPath(argv['localesPath']);
+if (argv["localesPath"] != null)
+  i18nCommon.setCustomLocalesPath(argv["localesPath"]);
 
 function safeRequestSingleInstanceLock(
   additionalData: Record<string, unknown>,
@@ -387,18 +475,18 @@ const readyPromise = app.whenReady();
 
 async function init() {
   try {
-    logger.info('LosslessCut version', app.getVersion(), { isDev });
-    await configStore.init({ customConfigDir: argv['configDir'] });
-    logger.info('Initialized config store');
+    logger.info("LosslessCut version", app.getVersion(), { isDev });
+    await configStore.init({ customConfigDir: argv["configDir"] });
+    logger.info("Initialized config store");
 
-    const allowMultipleInstances = configStore.get('allowMultipleInstances');
-    const language = configStore.get('language');
+    const allowMultipleInstances = configStore.get("allowMultipleInstances");
+    const language = configStore.get("language");
 
     if (
-      !allowMultipleInstances
-      && !safeRequestSingleInstanceLock({ argv: process.argv })
+      !allowMultipleInstances &&
+      !safeRequestSingleInstanceLock({ argv: process.argv })
     ) {
-      logger.info('Found running instance, quitting');
+      logger.info("Found running instance, quitting");
       app.quit();
       return;
     }
@@ -408,7 +496,7 @@ async function init() {
     // This can be tested with one terminal: npx electron .
     // and another terminal: npx electron . path/to/file.mp4
     app.on(
-      'second-instance',
+      "second-instance",
       (_event, _commandLine, _workingDirectory, additionalData) => {
         // Someone tried to run a second instance, we should focus our window.
         if (mainWindow) {
@@ -418,32 +506,34 @@ async function init() {
 
         if (
           !(
-            additionalData != null
-            && typeof additionalData === 'object'
-            && 'argv' in additionalData
-          )
-          || !Array.isArray(additionalData.argv)
-        ) return;
+            additionalData != null &&
+            typeof additionalData === "object" &&
+            "argv" in additionalData
+          ) ||
+          !Array.isArray(additionalData.argv)
+        )
+          return;
 
         const argv2 = parseCliArgs(additionalData.argv);
 
-        logger.info('second-instance', argv2);
+        logger.info("second-instance", argv2);
 
-        if (argv2['keyboardAction']) {
+        if (argv2["keyboardAction"]) {
           sendApiAction(
-            argv2['keyboardAction'],
+            argv2["keyboardAction"],
             argv2._.map((arg) => JSON.parse(String(arg))),
           );
-        } else if (argv2._ && argv2._.length > 0) openFilesEventually(argv2._.map(String));
+        } else if (argv2._ && argv2._.length > 0)
+          openFilesEventually(argv2._.map(String));
       },
     );
 
     // Quit when all windows are closed.
-    app.on('window-all-closed', () => {
+    app.on("window-all-closed", () => {
       app.quit();
     });
 
-    app.on('activate', () => {
+    app.on("activate", () => {
       // On OS X it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.
       if (mainWindow === null) {
@@ -451,51 +541,54 @@ async function init() {
       }
     });
 
-    ipcMain.on('renderer-ready', () => {
+    ipcMain.on("renderer-ready", () => {
       rendererReady = true;
       if (filesToOpen.length > 0) openFiles(filesToOpen);
     });
 
     // Mac OS open with LosslessCut
     // Emitted when the user wants to open a file with the application. The open-file event is usually emitted when the application is already open and the OS wants to reuse the application to open the file.
-    app.on('open-file', (event, path) => {
+    app.on("open-file", (event, path) => {
       openFilesEventually([path]);
       event.preventDefault(); // recommended in docs https://www.electronjs.org/docs/latest/api/app#event-open-file-macos
     });
 
-    ipcMain.on('setAskBeforeClose', (_e, val) => {
+    ipcMain.on("setAskBeforeClose", (_e, val) => {
       askBeforeClose = val;
     });
 
-    ipcMain.on('setLanguage', (_e, newLanguage) => changeLanguage(newLanguage));
+    ipcMain.on("setLanguage", (_e, newLanguage) => changeLanguage(newLanguage));
 
-    ipcMain.handle('tryTrashItem', async (_e, path) => {
+    ipcMain.handle("tryTrashItem", async (_e, path) => {
       try {
         await stat(path);
       } catch (err) {
-        if (err instanceof Error && 'code' in err && err.code === 'ENOENT') return;
+        if (err instanceof Error && "code" in err && err.code === "ENOENT")
+          return;
       }
       await shell.trashItem(path);
     });
 
-    ipcMain.handle('showItemInFolder', (_e, path) => shell.showItemInFolder(path));
+    ipcMain.handle("showItemInFolder", (_e, path) =>
+      shell.showItemInFolder(path),
+    );
 
-    ipcMain.on('apiActionResponse', (_e, { id }) => {
+    ipcMain.on("apiActionResponse", (_e, { id }) => {
       apiActionRequests.get(id)?.();
     });
 
-    logger.info('Waiting for app to become ready');
+    logger.info("Waiting for app to become ready");
     await readyPromise;
 
-    logger.info('CLI arguments', argv);
+    logger.info("CLI arguments", argv);
     // Only if no files to open already (open-file might have already added some files)
     if (filesToOpen.length === 0) filesToOpen = argv._.map(String);
     const { settingsJson } = argv;
 
-    setDisableNetworking(argv['disableNetworking']);
+    setDisableNetworking(argv["disableNetworking"]);
 
     if (settingsJson != null) {
-      logger.info('initializing settings', settingsJson);
+      logger.info("initializing settings", settingsJson);
       Object.entries(JSON5.parse(settingsJson)).forEach(([key, value]) => {
         // @ts-expect-error todo use zod?
         configStore.set(key, value);
@@ -505,28 +598,133 @@ async function init() {
     const { httpApi } = argv;
 
     if (httpApi != null) {
-      const port = typeof httpApi === 'number' ? httpApi : 8080;
+      const port = typeof httpApi === "number" ? httpApi : 8080;
       const { startHttpServer } = HttpServer({
         port,
         onKeyboardAction: sendApiAction,
         onAwaitAppEvent,
       });
       await startHttpServer();
-      logger.info('HTTP API listening on port', port);
+      logger.info("HTTP API listening on port", port);
     }
+
+    // Handle CLI commands for batch processing
+    if (argv["batchExport"]) {
+      logger.info("Batch export requested via CLI");
+      mainWindow?.webContents.send("cliBatchExport", {
+        exportQueue: argv["exportQueue"],
+      });
+    }
+
+    if (argv["watchDaemon"]) {
+      logger.info("Watch daemon mode requested via CLI");
+      mainWindow?.webContents.send("cliWatchDaemon", {});
+    }
+
+    if (argv["queueProcess"]) {
+      logger.info("Queue process requested via CLI");
+      mainWindow?.webContents.send("cliQueueProcess", {});
+    }
+
+    if (argv["queueClear"]) {
+      logger.info("Queue clear requested via CLI");
+      mainWindow?.webContents.send("cliQueueClear", {});
+    }
+
+    if (argv["templateApply"]) {
+      logger.info("Template apply requested via CLI", argv["templateApply"]);
+      mainWindow?.webContents.send("cliTemplateApply", {
+        templateId: argv["templateApply"],
+        projectTemplate: argv["projectTemplate"],
+      });
+    }
+
+    // Start all enabled watch folders on startup
+    const watchFolders =
+      (configStore.get("watchFolders") as WatchFolder[]) || [];
+    for (const folder of watchFolders) {
+      if (folder.enabled) {
+        startWatchFolder(folder.path);
+      }
+    }
+
+    // IPC handlers for watch folders
+    ipcMain.handle(
+      "getWatchFolders",
+      () => configStore.get("watchFolders") || [],
+    );
+    ipcMain.handle("addWatchFolder", (_e, folder: WatchFolder) => {
+      const folders = (configStore.get("watchFolders") as WatchFolder[]) || [];
+      // Ensure required fields are present
+      const newFolder: WatchFolder = {
+        id: folder.id ?? `watch-${Date.now()}`,
+        path: folder.path,
+        enabled: folder.enabled ?? true,
+        templateId: folder.templateId,
+        presetId: folder.presetId,
+        outputDir: folder.outputDir ?? folder.path,
+        recursive: folder.recursive ?? true,
+        filePattern: folder.filePattern ?? "*",
+        lossyMode: folder.lossyMode,
+        deleteAfterProcessing: folder.deleteAfterProcessing ?? false,
+        processExisting: folder.processExisting ?? false,
+      };
+      folders.push(newFolder);
+      configStore.set("watchFolders", folders);
+      if (newFolder.enabled) startWatchFolder(newFolder.path);
+    });
+    ipcMain.handle(
+      "updateWatchFolder",
+      (_e, id: string, updates: Partial<WatchFolder>) => {
+        const folders =
+          (configStore.get("watchFolders") as WatchFolder[]) || [];
+        const index = folders.findIndex((f) => f.id === id);
+        if (index !== -1) {
+          const oldFolder = folders[index]!;
+          const updatedFolder: WatchFolder = {
+            ...oldFolder,
+            ...updates,
+          } as WatchFolder;
+          folders[index] = updatedFolder;
+          configStore.set("watchFolders", folders);
+          if (oldFolder.enabled && !updatedFolder.enabled)
+            stopWatchFolder(oldFolder.path);
+          else if (!oldFolder.enabled && updatedFolder.enabled)
+            startWatchFolder(updatedFolder.path);
+          else if (
+            oldFolder.enabled &&
+            updatedFolder.enabled &&
+            oldFolder.path !== updatedFolder.path
+          ) {
+            stopWatchFolder(oldFolder.path);
+            startWatchFolder(updatedFolder.path);
+          }
+        }
+      },
+    );
+    ipcMain.handle("removeWatchFolder", (_e, id: string) => {
+      const folders = (configStore.get("watchFolders") as WatchFolder[]) || [];
+      const index = folders.findIndex((f) => f.id === id);
+      if (index !== -1) {
+        const folder = folders[index]!;
+        if (folder.enabled) stopWatchFolder(folder.path);
+        folders.splice(index, 1);
+        configStore.set("watchFolders", folders);
+      }
+    });
 
     if (isDev) {
       // eslint-disable-next-line @typescript-eslint/no-var-requires,global-require,import/no-extraneous-dependencies
       installExtension(REACT_DEVELOPER_TOOLS)
-        .then((extension) => logger.info('Added Extension', extension.name))
-        .catch((err: unknown) => logger.error('Failed to add extension', err));
+        .then((extension) => logger.info("Added Extension", extension.name))
+        .catch((err: unknown) => logger.error("Failed to add extension", err));
     }
 
     createWindow();
     // will also updateMenu and set about panel options
     await changeLanguage(language);
 
-    const enableUpdateCheck = configStore.get('enableUpdateCheck');
+    const enableUpdateCheck = configStore.get("enableUpdateCheck");
 
     if (!hasDisabledNetworking() && enableUpdateCheck && !isStoreBuild) {
       newVersion = await checkNewVersion();
@@ -534,7 +732,7 @@ async function init() {
       if (newVersion) updateMenu();
     }
   } catch (err) {
-    logger.error('Failed to initialize', err);
+    logger.error("Failed to initialize", err);
   }
 }
 
@@ -542,7 +740,7 @@ function focusWindow() {
   try {
     app.focus({ steal: true });
   } catch (err) {
-    logger.error('Failed to focus window', err);
+    logger.error("Failed to focus window", err);
   }
 }
 
@@ -558,7 +756,9 @@ function sendOsNotification(options: NotificationConstructorOptions) {
   const notification = new Notification(options);
   // Note: For notifications on macOS, your application will need to be code-signed in order for notification events to emit correctly. This requirement stems from the underlying UNNotification API provided by Apple. Unsigned binaries will emit a `failed` event when notification APIs are called.
   // https://www.electronjs.org/docs/latest/tutorial/notifications#macos
-  notification.on('failed', (_e, error) => logger.warn('Notification failed', error));
+  notification.on("failed", (_e, error) =>
+    logger.warn("Notification failed", error),
+  );
   notification.show();
 }
 
@@ -573,6 +773,62 @@ const remoteApi = {
   writeClipboardText: (text: string) => electron.clipboard.writeText(text),
   readClipboardText: () => electron.clipboard.readText(),
   openExternal,
+  getWatchFolders: () => configStore.get("watchFolders") || [],
+  addWatchFolder: (folder: WatchFolder) => {
+    const folders = (configStore.get("watchFolders") as WatchFolder[]) || [];
+    // Ensure required fields are present
+    const newFolder: WatchFolder = {
+      id: folder.id ?? `watch-${Date.now()}`,
+      path: folder.path,
+      enabled: folder.enabled ?? true,
+      templateId: folder.templateId,
+      presetId: folder.presetId,
+      outputDir: folder.outputDir ?? folder.path,
+      recursive: folder.recursive ?? true,
+      filePattern: folder.filePattern ?? "*",
+      lossyMode: folder.lossyMode,
+      deleteAfterProcessing: folder.deleteAfterProcessing ?? false,
+      processExisting: folder.processExisting ?? false,
+    };
+    folders.push(newFolder);
+    configStore.set("watchFolders", folders);
+    if (newFolder.enabled) startWatchFolder(newFolder.path);
+  },
+  updateWatchFolder: (id: string, updates: Partial<WatchFolder>) => {
+    const folders = (configStore.get("watchFolders") as WatchFolder[]) || [];
+    const index = folders.findIndex((f) => f.id === id);
+    if (index !== -1) {
+      const oldFolder = folders[index]!;
+      const updatedFolder: WatchFolder = {
+        ...oldFolder,
+        ...updates,
+      } as WatchFolder;
+      folders[index] = updatedFolder;
+      configStore.set("watchFolders", folders);
+      if (oldFolder.enabled && !updatedFolder.enabled)
+        stopWatchFolder(oldFolder.path);
+      else if (!oldFolder.enabled && updatedFolder.enabled)
+        startWatchFolder(updatedFolder.path);
+      else if (
+        oldFolder.enabled &&
+        updatedFolder.enabled &&
+        oldFolder.path !== updatedFolder.path
+      ) {
+        stopWatchFolder(oldFolder.path);
+        startWatchFolder(updatedFolder.path);
+      }
+    }
+  },
+  removeWatchFolder: (id: string) => {
+    const folders = (configStore.get("watchFolders") as WatchFolder[]) || [];
+    const index = folders.findIndex((f) => f.id === id);
+    if (index !== -1) {
+      const folder = folders[index]!;
+      if (folder.enabled) stopWatchFolder(folder.path);
+      folders.splice(index, 1);
+      configStore.set("watchFolders", folders);
+    }
+  },
 };
 
 export type RemoteApi = typeof remoteApi;
@@ -602,13 +858,13 @@ export type RemoteApiLegacy = typeof remoteApiLegacy;
 
 // @ts-expect-error don't know how to type
 app.addListener(
-  'remote-require',
+  "remote-require",
   (
     event: { returnValue: RemoteApiLegacy },
     _webContents: unknown,
     moduleName: string,
   ) => {
-    if (moduleName === './index.js') {
+    if (moduleName === "./index.js") {
       // eslint-disable-next-line no-param-reassign
       event.returnValue = remoteApiLegacy;
     }
@@ -617,7 +873,7 @@ app.addListener(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ipcMain.handle(
-  '__electron_rpc__',
+  "__electron_rpc__",
   async (_event, method: keyof RemoteApi, args: any[]) => {
     const fn = remoteApi[method];
     assert(fn, `Unknown API method: ${method}`);

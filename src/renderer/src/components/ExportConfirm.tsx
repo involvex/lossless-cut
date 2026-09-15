@@ -30,12 +30,16 @@ import {
   defaultCutMergedFileTemplate,
 } from "../util/outputNameTemplate";
 import type { FFprobeStream } from "../../../common/ffprobe";
-import type { AvoidNegativeTs, PreserveMetadata } from "../../../common/types";
+import type {
+  AvoidNegativeTs,
+  PreserveMetadata,
+  LossyMode,
+} from "../../../common/types";
 import TextInput from "./TextInput";
 import type { UseSegments } from "../hooks/useSegments";
+import { usePresets } from "../hooks/usePresets";
 import ExportSheet from "./ExportSheet";
 import ToggleExportConfirm from "./ToggleExportConfirm";
-import type { LossyMode } from "../../../common/types";
 import AnimatedTr from "./AnimatedTr";
 import type { Frame } from "../ffmpeg";
 import type { FindNearestKeyframeTime } from "../hooks/useKeyframes";
@@ -719,6 +723,7 @@ function ExportConfirm({
   visible,
   onClosePress,
   onExportConfirm,
+  onAddToQueue,
   outFormat,
   renderOutFmt,
   outputDir,
@@ -753,6 +758,10 @@ function ExportConfirm({
   numStreamsTotal: number;
   numStreamsToCopy: number;
   onShowStreamsSelectorClick: () => void;
+  onAddToQueue: (
+    lossyMode: LossyMode | undefined,
+    presetId: string | undefined,
+  ) => void;
   cutFileTemplate: string;
   cutMergedFileTemplate: string;
   generateCutFileNames: GenerateOutFileNames;
@@ -810,7 +819,13 @@ function ExportConfirm({
     setLossyMode,
   } = useUserSettings();
 
+  const { presets } = usePresets();
+
   const [showAdvanced, setShowAdvanced] = useState(!simpleMode);
+
+  const [selectedPresetId, setSelectedPresetId] = useState<
+    string | undefined
+  >();
 
   const [localLossyMode, setLocalLossyMode] = useState<LossyMode>(
     configLossyMode ?? {},
@@ -1228,12 +1243,29 @@ function ExportConfirm({
       title={t("Export options")}
       onClosePress={onClosePress}
       renderButton={() => (
-        <ExportButton
-          segmentsToExport={segmentsToExport}
-          areWeCutting={areWeCutting}
-          onClick={withBlur(() => onExportConfirm())}
-          style={{ fontSize: "1.3em" }}
-        />
+        <div style={{ display: "flex", gap: ".5em" }}>
+          <ExportButton
+            segmentsToExport={segmentsToExport}
+            areWeCutting={areWeCutting}
+            onClick={withBlur(() => onExportConfirm())}
+            style={{ fontSize: "1.3em" }}
+          />
+          <ExportButton
+            segmentsToExport={segmentsToExport}
+            areWeCutting={areWeCutting}
+            onClick={withBlur(() =>
+              onAddToQueue(localLossyMode, selectedPresetId),
+            )}
+            style={{
+              fontSize: "1.3em",
+              background: "var(--blue-7)",
+              color: "var(--blue-0)",
+              borderColor: "var(--blue-8)",
+            }}
+          >
+            {t("Add to Queue")}
+          </ExportButton>
+        </div>
       )}
       renderBottom={() => (
         <>
@@ -1310,6 +1342,37 @@ function ExportConfirm({
             <td>{renderOutFmt({ height: "1.8em", maxWidth: 150 })}</td>
             <td>
               <HelpIcon onClick={onOutFmtHelpPress} />
+            </td>
+          </tr>
+
+          <tr>
+            <td>{t("Encoding preset:")}</td>
+            <td>
+              <Select
+                value={selectedPresetId ?? ""}
+                onChange={(e) =>
+                  setSelectedPresetId(e.target.value || undefined)
+                }
+                style={{ height: 20, marginLeft: 5 }}
+              >
+                <option value="">{t("None (use current settings)")}</option>
+                {presets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </td>
+            <td>
+              <HelpIcon
+                onClick={() =>
+                  showHelpText({
+                    text: t(
+                      "Select a built-in preset to quickly apply common encoding settings for different platforms. Presets configure video/audio codecs, bitrate, and other settings automatically.",
+                    ),
+                  })
+                }
+              />
             </td>
           </tr>
 

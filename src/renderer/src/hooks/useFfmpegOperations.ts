@@ -1,8 +1,8 @@
-import { useCallback } from "react";
-import sum from "lodash/sum";
-import pMap from "p-map";
-import invariant from "tiny-invariant";
-import i18n from "i18next";
+import { useCallback } from 'react';
+import sum from 'lodash/sum';
+import pMap from 'p-map';
+import invariant from 'tiny-invariant';
+import i18n from 'i18next';
 
 import {
   getSuffixedOutPath,
@@ -16,7 +16,7 @@ import {
   html5ifiedPrefix,
   html5dummySuffix,
   assertFileExists,
-} from "../util";
+} from '../util';
 import {
   isCuttingStart,
   isCuttingEnd,
@@ -31,23 +31,23 @@ import {
   runFfmpegConcat,
   RefuseOverwriteError,
   runFfmpeg,
-} from "../ffmpeg";
+} from '../ffmpeg';
 import {
   getEffectiveAvoidNegativeTs,
   getMapStreamsArgs,
   getStreamIdsToCopy,
-} from "../util/streams";
-import { needsSmartCut, getCodecParams } from "../smartcut";
-import { buildLossyFfmpegArgs } from "../lossyOperations";
-import { getGuaranteedSegments, isDurationValid } from "../segments";
-import type { FFprobeStream } from "../../../common/ffprobe";
+} from '../util/streams';
+import { needsSmartCut, getCodecParams } from '../smartcut';
+import { buildLossyFfmpegArgs } from '../lossyOperations';
+import { getGuaranteedSegments, isDurationValid } from '../segments';
+import type { FFprobeStream } from '../../../common/ffprobe';
 import type {
   AvoidNegativeTs,
   FfmpegHwAccel,
   Html5ifyMode,
   LossyMode,
   PreserveMetadata,
-} from "../../../common/types";
+} from '../../../common/types';
 import {
   deleteDispositionValue,
   type AllFilesMeta,
@@ -56,28 +56,28 @@ import {
   type LiteFFprobeStream,
   type ParamsByFile,
   type SegmentToExport,
-} from "../types";
-import { UserFacingError } from "../../errors";
-import mainApi from "../mainApi";
+} from '../types';
+import { UserFacingError } from '../../errors';
+import mainApi from '../mainApi';
 import {
   formatFfmpegNumber,
   getFixChannelLayoutFilter,
   getHwaccelArgs,
   hasCustomChannelLayout,
-} from "../../../common/util";
+} from '../../../common/util';
 
-const { join, resolve, dirname } = window.require("node:path");
+const { join, resolve, dirname } = window.require('node:path');
 const {
   writeFile,
   mkdir,
   access,
   constants: { W_OK },
-} = window.require("node:fs/promises");
+} = window.require('node:fs/promises');
 
 export class OutputNotWritableError extends Error {
   constructor() {
     super();
-    this.name = "OutputNotWritableError";
+    this.name = 'OutputNotWritableError';
   }
 }
 
@@ -91,11 +91,10 @@ async function writeChaptersFfmetadata(
 
   const ffmetadata = chapters
     .map(
-      ({ start, end, name }) =>
-        `[CHAPTER]\nTIMEBASE=1/1000\nSTART=${Math.floor(start * 1000)}\nEND=${Math.floor(end * 1000)}\ntitle=${name || ""}`,
+      ({ start, end, name }) => `[CHAPTER]\nTIMEBASE=1/1000\nSTART=${Math.floor(start * 1000)}\nEND=${Math.floor(end * 1000)}\ntitle=${name || ''}`,
     )
-    .join("\n\n");
-  console.log("Writing chapters", ffmetadata);
+    .join('\n\n');
+  console.log('Writing chapters', ffmetadata);
   await writeFile(path, ffmetadata);
   return path;
 }
@@ -103,18 +102,18 @@ async function writeChaptersFfmetadata(
 // Muxers implemented by ffmpeg's movenc.c, i.e. the ones that accept `-movflags`.
 // Note: deliberately not util/streams.ts `isMov`, which is a narrower, UI oriented list.
 const movencFormats = new Set([
-  "3g2",
-  "3gp",
-  "f4v",
-  "ipod",
-  "ismv",
-  "mov",
-  "mp4",
-  "psp",
+  '3g2',
+  '3gp',
+  'f4v',
+  'ipod',
+  'ismv',
+  'mov',
+  'mp4',
+  'psp',
 ]);
 
 // Muxers implemented by ffmpeg's matroskaenc.c, i.e. the ones that accept `-default_mode`.
-const matroskaencFormats = new Set(["matroska", "webm"]);
+const matroskaencFormats = new Set(['matroska', 'webm']);
 
 // ffmpeg tolerates private options belonging to a different muxer, but they add noise to the command line
 // that we log, show in "Last commands" and include in error reports - which makes troubleshooting harder.
@@ -134,13 +133,13 @@ function getMovFlags({
 
   // https://video.stackexchange.com/a/26084/29486
   // https://github.com/mifi/lossless-cut/issues/331#issuecomment-623401794
-  if (preserveMovData) flags.push("use_metadata_tags");
+  if (preserveMovData) flags.push('use_metadata_tags');
 
   // https://github.com/mifi/lossless-cut/issues/347
-  if (movFastStart) flags.push("+faststart");
+  if (movFastStart) flags.push('+faststart');
 
   if (flags.length === 0) return [];
-  return flags.flatMap((flag) => ["-movflags", flag]);
+  return flags.flatMap((flag) => ['-movflags', flag]);
 }
 
 // same as getMovFlags, but for the matroska muxer's private options
@@ -148,8 +147,8 @@ function getMatroskaFlags(outFormat: string | undefined) {
   if (outFormat != null && !matroskaencFormats.has(outFormat)) return [];
 
   return [
-    "-default_mode",
-    "infer_no_subs",
+    '-default_mode',
+    'infer_no_subs',
     // because it makes sense to not force subtitles disposition to "default" if they were not default in the input file
     // after some testing, it seems that default is actually "infer", contrary to what is documented (ffmpeg doc says "passthrough" is default)
     // https://ffmpeg.org/ffmpeg-formats.html#Options-8
@@ -157,16 +156,12 @@ function getMatroskaFlags(outFormat: string | undefined) {
   ];
 }
 
-const getChaptersInputArgs = (ffmetadataPath: string | undefined) =>
-  ffmetadataPath ? ["-f", "ffmetadata", "-i", ffmetadataPath] : [];
+const getChaptersInputArgs = (ffmetadataPath: string | undefined) => (ffmetadataPath ? ['-f', 'ffmetadata', '-i', ffmetadataPath] : []);
 
 async function tryDeleteFiles(paths: string[]) {
   return pMap(
     paths,
-    (path) =>
-      unlinkWithRetry(path).catch((err) =>
-        console.error("Failed to delete", path, err),
-      ),
+    (path) => unlinkWithRetry(path).catch((err) => console.error('Failed to delete', path, err)),
     { concurrency: 5 },
   );
 }
@@ -181,8 +176,7 @@ export async function maybeMkDeepOutDir({
   // cutFileNames might contain slashes and therefore might have a subdir(tree) that we need to mkdir
   // https://github.com/mifi/lossless-cut/issues/1532
   const actualOutputDir = dirname(fileOutPath);
-  if (actualOutputDir !== outputDir)
-    await mkdir(actualOutputDir, { recursive: true });
+  if (actualOutputDir !== outputDir) await mkdir(actualOutputDir, { recursive: true });
 }
 
 function useFfmpegOperations({
@@ -235,17 +229,16 @@ function useFfmpegOperations({
         }
       }
       const shouldSkip = !enableOverwriteOutput && fileExists;
-      if (shouldSkip) console.log("Not overwriting existing file", path);
+      if (shouldSkip) console.log('Not overwriting existing file', path);
       return shouldSkip;
     },
     [enableOverwriteOutput],
   );
 
   const getOutputPlaybackRateArgs = useCallback(
-    () =>
-      outputPlaybackRate !== 1
-        ? ["-itsscale", String(1 / outputPlaybackRate)]
-        : [],
+    () => (outputPlaybackRate !== 1
+      ? ['-itsscale', String(1 / outputPlaybackRate)]
+      : []),
     [outputPlaybackRate],
   );
 
@@ -281,10 +274,9 @@ function useFfmpegOperations({
       preserveMetadataOnMerge: boolean;
       videoTimebase?: number | undefined;
     }) => {
-      if (await shouldSkipExistingFile(outPath))
-        return { haveExcludedStreams: false };
+      if (await shouldSkipExistingFile(outPath)) return { haveExcludedStreams: false };
 
-      console.log("Merging files", { paths }, "to", outPath);
+      console.log('Merging files', { paths }, 'to', outPath);
 
       const durations = await pMap(
         paths,
@@ -319,20 +311,20 @@ function useFfmpegOperations({
         // concat list - always first
         addInput([
           // https://blog.yo1.dog/fix-for-ffmpeg-protocol-not-on-whitelist-error-for-urls/
-          "-f",
-          "concat",
-          "-safe",
-          "0",
-          "-protocol_whitelist",
-          "file,pipe,fd",
-          "-i",
-          "-",
+          '-f',
+          'concat',
+          '-safe',
+          '0',
+          '-protocol_whitelist',
+          'file,pipe,fd',
+          '-i',
+          '-',
         ]);
 
         let metadataSourceIndex: number | undefined;
         if (preserveMetadataOnMerge) {
           // If preserve metadata, add the first file (we will get metadata from this input)
-          metadataSourceIndex = addInput(["-i", metadataFromPath]);
+          metadataSourceIndex = addInput(['-i', metadataFromPath]);
         }
 
         let chaptersInputIndex: number | undefined;
@@ -357,7 +349,7 @@ function useFfmpegOperations({
 
         // Keep this similar to losslessCutSingle()
         const ffmpegArgs = [
-          "-hide_banner",
+          '-hide_banner',
           // No progress if we set loglevel warning :(
           // '-loglevel', 'warning',
 
@@ -369,25 +361,25 @@ function useFfmpegOperations({
           // So we use the first file file (index 1) for metadata
           // Can only do this if allStreams (-map 0) is set
           ...(metadataSourceIndex != null
-            ? ["-map_metadata", String(metadataSourceIndex)]
+            ? ['-map_metadata', String(metadataSourceIndex)]
             : []),
 
           ...(chaptersInputIndex != null
-            ? ["-map_chapters", String(chaptersInputIndex)]
+            ? ['-map_chapters', String(chaptersInputIndex)]
             : []),
 
           ...getMovFlags({ outFormat, preserveMovData, movFastStart }),
           ...getMatroskaFlags(outFormat),
 
           // See https://github.com/mifi/lossless-cut/issues/170
-          "-ignore_unknown",
+          '-ignore_unknown',
 
           ...getExperimentalArgs(ffmpegExperimental),
 
           ...getVideoTimescaleArgs(videoTimebase),
 
-          ...(outFormat ? ["-f", outFormat] : []),
-          "-y",
+          ...(outFormat ? ['-f', outFormat] : []),
+          '-y',
           outPath,
         ];
 
@@ -396,14 +388,13 @@ function useFfmpegOperations({
         // https://superuser.com/questions/718027/ffmpeg-concat-doesnt-work-with-absolute-path
         const concatTxt = paths
           .map(
-            (file) =>
-              `file 'file:${resolve(file).replaceAll("'", String.raw`'\''`)}'`,
+            (file) => `file 'file:${resolve(file).replaceAll("'", String.raw`'\''`)}'`,
           )
-          .join("\n");
+          .join('\n');
 
-        const ffmpegCommandLine = getFfCommandLine("ffmpeg", ffmpegArgs);
+        const ffmpegCommandLine = getFfCommandLine('ffmpeg', ffmpegArgs);
 
-        const fullCommandLine = `echo -e "${concatTxt.replaceAll("\n", String.raw`\n`)}" | ${ffmpegCommandLine}`;
+        const fullCommandLine = `echo -e "${concatTxt.replaceAll('\n', String.raw`\n`)}" | ${ffmpegCommandLine}`;
         console.log(fullCommandLine);
         appendLastCommandsLog(fullCommandLine);
 
@@ -485,34 +476,32 @@ function useFfmpegOperations({
       const frameDuration = getFrameDuration(detectedFps);
 
       const cuttingStart = isCuttingStart(cutFrom);
-      const cutFromWithAdjustment =
-        cutFrom + cutFromAdjustmentFrames * frameDuration;
+      const cutFromWithAdjustment = cutFrom + cutFromAdjustmentFrames * frameDuration;
       const cutToWithAdjustment = cutTo + cutToAdjustmentFrames * frameDuration;
       const cuttingEnd = isCuttingEnd(cutTo, fileDuration);
       const areWeCutting = cuttingStart || cuttingEnd;
       if (areWeCutting) {
         console.log(
-          "Cutting from",
+          'Cutting from',
           cuttingStart
             ? `${cutFrom} (${cutFromWithAdjustment} adjusted ${cutFromAdjustmentFrames} frames)`
-            : "start",
-          "to",
+            : 'start',
+          'to',
           cuttingEnd
             ? `${cutTo} (adjusted ${cutToAdjustmentFrames} frames)`
-            : "end",
+            : 'end',
         );
       }
 
       let cutDuration = cutToWithAdjustment - cutFromWithAdjustment;
-      if (detectedFps != null)
-        cutDuration = Math.max(cutDuration, frameDuration); // ensure at least one frame duration
+      if (detectedFps != null) cutDuration = Math.max(cutDuration, frameDuration); // ensure at least one frame duration
 
       // Don't cut if not needed: https://github.com/mifi/lossless-cut/issues/50
       const cutFromArgs = cuttingStart
-        ? ["-ss", formatFfmpegNumber(cutFromWithAdjustment)]
+        ? ['-ss', formatFfmpegNumber(cutFromWithAdjustment)]
         : [];
       const cutToArgs = cuttingEnd
-        ? ["-t", formatFfmpegNumber(cutDuration)]
+        ? ['-t', formatFfmpegNumber(cutDuration)]
         : [];
 
       const copyFileStreamsFiltered = copyFileStreams.filter(
@@ -527,54 +516,49 @@ function useFfmpegOperations({
         allFilesMeta,
         copyFileStreams: copyFileStreamsFiltered,
       });
-      const avoidNegativeTsArgs =
-        cuttingStart && effectiveAvoidNegativeTs && ssBeforeInput
-          ? ["-avoid_negative_ts", String(effectiveAvoidNegativeTs)]
-          : [];
+      const avoidNegativeTsArgs = cuttingStart && effectiveAvoidNegativeTs && ssBeforeInput
+        ? ['-avoid_negative_ts', String(effectiveAvoidNegativeTs)]
+        : [];
 
       // If cutting multiple files, `-ss` must be before `-i`, regardless of `ssBeforeInput` choice
       // and it seems that `-t` must be after `-i` #896
-      const inputFilesArgs =
-        copyFileStreamsFiltered.length > 1
-          ? copyFileStreamsFiltered.flatMap(({ streamIds, path }) => {
-              const fileParams = paramsByFile.get(path);
-              // Don't cut/seek cover art or images attached by users - it will break them, see https://github.com/mifi/lossless-cut/issues/2884
-              const streamParams = streamIds.map((streamId) =>
-                fileParams?.paramsByStream.get(streamId),
-              );
-              if (
-                streamIds.length === 1 &&
-                streamParams[0]?.disposition === "attached_pic"
-              ) {
-                return ["-i", path];
-              }
+      const inputFilesArgs = copyFileStreamsFiltered.length > 1
+        ? copyFileStreamsFiltered.flatMap(({ streamIds, path }) => {
+          const fileParams = paramsByFile.get(path);
+          // Don't cut/seek cover art or images attached by users - it will break them, see https://github.com/mifi/lossless-cut/issues/2884
+          const streamParams = streamIds.map((streamId) => fileParams?.paramsByStream.get(streamId));
+          if (
+            streamIds.length === 1
+                && streamParams[0]?.disposition === 'attached_pic'
+          ) {
+            return ['-i', path];
+          }
 
-              const itsOffsetArgs = fileParams?.offset
-                ? ["-itsoffset", formatFfmpegNumber(fileParams.offset)]
-                : [];
+          const itsOffsetArgs = fileParams?.offset
+            ? ['-itsoffset', formatFfmpegNumber(fileParams.offset)]
+            : [];
 
-              return [
-                ...cutFromArgs,
-                ...itsOffsetArgs,
-                "-i",
-                path,
-                ...cutToArgs,
-              ];
-            })
-          : [
-              ...(ssBeforeInput ? cutFromArgs : []),
-              "-i",
+          return [
+            ...cutFromArgs,
+            ...itsOffsetArgs,
+            '-i',
+            path,
+            ...cutToArgs,
+          ];
+        })
+        : [
+          ...(ssBeforeInput ? cutFromArgs : []),
+          '-i',
               copyFileStreamsFiltered[0]!.path,
               ...(!ssBeforeInput ? cutFromArgs : []),
               ...cutToArgs,
-            ];
+        ];
 
       const chaptersInputIndex = copyFileStreamsFiltered.length;
 
-      const rotationArgs =
-        rotation !== undefined
-          ? ["-display_rotation:v:0", String(360 - rotation)]
-          : [];
+      const rotationArgs = rotation !== undefined
+        ? ['-display_rotation:v:0', String(360 - rotation)]
+        : [];
 
       // This function tries to calculate the output stream index needed for -metadata:s:x and -disposition:x arguments
       // It is based on the assumption that copyFileStreamsFiltered contains the order of the input files (and their respective streams orders) sent to ffmpeg, to hopefully calculate the same output stream index values that ffmpeg does internally.
@@ -595,8 +579,7 @@ function useFfmpegOperations({
         if (!foundFile) return undefined; // Could happen if a tag has been edited on an external file, then the file was removed
 
         // Then add the index of the current stream index to the count
-        const copiedStreamIndex =
-          foundFile.streamIds.indexOf(inputFileStreamIndex);
+        const copiedStreamIndex = foundFile.streamIds.indexOf(inputFileStreamIndex);
         if (copiedStreamIndex === -1) return undefined; // Could happen if a tag has been edited on a stream, but the stream is disabled
         return streamCount + copiedStreamIndex;
       }
@@ -605,7 +588,7 @@ function useFfmpegOperations({
 
       const customFileMetadataArgs = Object.entries(
         paramsByFile.get(filePath)?.metadata ?? {},
-      ).flatMap(([key, value]) => ["-metadata", `${key}=${value}`]);
+      ).flatMap(([key, value]) => ['-metadata', `${key}=${value}`]);
 
       const mapStreamsArgs = getMapStreamsArgs({
         copyFileStreams: copyFileStreamsFiltered,
@@ -626,22 +609,17 @@ function useFfmpegOperations({
               const { disposition } = streamParams;
               if (disposition != null) {
                 // "0" means delete the disposition for this stream
-                const dispositionArg =
-                  disposition === deleteDispositionValue ? "0" : disposition;
+                const dispositionArg = disposition === deleteDispositionValue ? '0' : disposition;
                 ret.push(`-disposition:${outputIndex}`, String(dispositionArg));
               }
 
               const bitstreamFilters: string[] = [];
-              if (streamParams.bsfH264Mp4toannexb)
-                bitstreamFilters.push("h264_mp4toannexb");
-              if (streamParams.bsfHevcMp4toannexb)
-                bitstreamFilters.push("hevc_mp4toannexb");
-              if (streamParams.bsfHevcAudInsert)
-                bitstreamFilters.push("hevc_metadata=aud=insert");
+              if (streamParams.bsfH264Mp4toannexb) bitstreamFilters.push('h264_mp4toannexb');
+              if (streamParams.bsfHevcMp4toannexb) bitstreamFilters.push('hevc_mp4toannexb');
+              if (streamParams.bsfHevcAudInsert) bitstreamFilters.push('hevc_metadata=aud=insert');
 
               const getFileStreams = () => allFilesMeta[fileId]?.streams;
-              const getStream = () =>
-                getFileStreams()?.find((s) => s.index === streamId);
+              const getStream = () => getFileStreams()?.find((s) => s.index === streamId);
 
               // Lossless crop via codec bitstream metadata (#643)
               if (streamParams.crop) {
@@ -652,9 +630,9 @@ function useFfmpegOperations({
                   const codecName = streamInfo?.codec_name;
 
                   const cropParams = `crop_left=${left}:crop_right=${right}:crop_top=${top}:crop_bottom=${bottom}`;
-                  if (codecName === "h264") {
+                  if (codecName === 'h264') {
                     bitstreamFilters.push(`h264_metadata=${cropParams}`);
-                  } else if (codecName === "hevc") {
+                  } else if (codecName === 'hevc') {
                     bitstreamFilters.push(`hevc_metadata=${cropParams}`);
                   }
                 }
@@ -667,23 +645,23 @@ function useFfmpegOperations({
                   const streamInfo = getStream();
                   const codecName = streamInfo?.codec_name;
 
-                  if (codecName === "h264") {
+                  if (codecName === 'h264') {
                     bitstreamFilters.push(
                       `h264_metadata=sample_aspect_ratio=${num}/${den}`,
                     );
-                  } else if (codecName === "hevc") {
+                  } else if (codecName === 'hevc') {
                     bitstreamFilters.push(
                       `hevc_metadata=sample_aspect_ratio=${num}/${den}`,
                     );
                   } else {
                     // For non-H264/HEVC codecs, use container-level -aspect flag
-                    ret.push("-aspect", `${num}:${den}`);
+                    ret.push('-aspect', `${num}:${den}`);
                   }
                 }
               }
 
               if (bitstreamFilters.length > 0) {
-                ret.push(`-bsf:${outputIndex}`, bitstreamFilters.join(","));
+                ret.push(`-bsf:${outputIndex}`, bitstreamFilters.join(','));
               }
 
               if (streamParams.tag != null) {
@@ -705,21 +683,21 @@ function useFfmpegOperations({
       })();
 
       function getPreserveMetadata() {
-        if (preserveMetadata === "default") return ["-map_metadata", "0"]; // todo isn't this ffmpeg default and can be omitted? https://stackoverflow.com/a/67508734/6519037
-        if (preserveMetadata === "none") return ["-map_metadata", "-1"];
-        if (preserveMetadata === "nonglobal") return ["-map_metadata:g", "-1"]; // https://superuser.com/a/1546267/658247
+        if (preserveMetadata === 'default') return ['-map_metadata', '0']; // todo isn't this ffmpeg default and can be omitted? https://stackoverflow.com/a/67508734/6519037
+        if (preserveMetadata === 'none') return ['-map_metadata', '-1'];
+        if (preserveMetadata === 'nonglobal') return ['-map_metadata:g', '-1']; // https://superuser.com/a/1546267/658247
         return [];
       }
 
       function getPreserveChapters() {
-        if (chaptersPath) return ["-map_chapters", String(chaptersInputIndex)];
+        if (chaptersPath) return ['-map_chapters', String(chaptersInputIndex)];
         // todo should preserve chapters be hardcoded (and disabled in UI) when segmentsToChaptersOnly mode is enabled?
-        if (!preserveChapters) return ["-map_chapters", "-1"]; // https://github.com/mifi/lossless-cut/issues/2176
+        if (!preserveChapters) return ['-map_chapters', '-1']; // https://github.com/mifi/lossless-cut/issues/2176
         return []; // default: includes chapters from input
       }
 
       const ffmpegArgs = [
-        "-hide_banner",
+        '-hide_banner',
         // No progress if we set loglevel warning :(
         // '-loglevel', 'warning',
 
@@ -738,7 +716,7 @@ function useFfmpegOperations({
 
         ...getPreserveChapters(),
 
-        ...(shortestFlag ? ["-shortest"] : []),
+        ...(shortestFlag ? ['-shortest'] : []),
 
         ...getMovFlags({ outFormat, preserveMovData, movFastStart }),
         ...getMatroskaFlags(outFormat),
@@ -748,15 +726,15 @@ function useFfmpegOperations({
         ...customParamsArgs,
 
         // See https://github.com/mifi/lossless-cut/issues/170
-        "-ignore_unknown",
+        '-ignore_unknown',
 
         ...getExperimentalArgs(ffmpegExperimental),
 
         ...getVideoTimescaleArgs(videoTimebase),
 
-        "-f",
+        '-f',
         outFormat,
-        "-y",
+        '-y',
         outPath,
       ];
 
@@ -851,33 +829,33 @@ function useFfmpegOperations({
       });
 
       const ffmpegArgs = [
-        "-hide_banner",
+        '-hide_banner',
         // No progress if we set loglevel warning :(
         // '-loglevel', 'warning',
 
-        "-ss",
+        '-ss',
         formatFfmpegNumber(cutFrom), // if we don't -ss before -i, seeking will be slow for long files, see https://github.com/mifi/lossless-cut/issues/126#issuecomment-1135451043
-        "-i",
+        '-i',
         filePath,
-        "-ss",
-        "0", // If we don't do this, the output seems to start with an empty black after merging with the encoded part
-        "-t",
+        '-ss',
+        '0', // If we don't do this, the output seems to start with an empty black after merging with the encoded part
+        '-t',
         formatFfmpegNumber(cutTo - cutFrom),
 
         ...mapStreamsArgs,
 
         // See https://github.com/mifi/lossless-cut/issues/170
-        "-ignore_unknown",
+        '-ignore_unknown',
 
         ...getVideoTimescaleArgs(videoTimebase),
 
-        ...(hasBFrames ? ["-bf", String(hasBFrames)] : []),
+        ...(hasBFrames ? ['-bf', String(hasBFrames)] : []),
 
         ...getExperimentalArgs(ffmpegExperimental),
 
-        "-f",
+        '-f',
         outFormat,
-        "-y",
+        '-y',
         outPath,
       ];
 
@@ -942,15 +920,13 @@ function useFfmpegOperations({
       // Get stream info for the main file
       const { streams } = allFilesMeta[filePath]!;
       const videoStream = streams.find(
-        (s: { codec_type: string; index: number }) =>
-          s.codec_type === "video" && s.index === activeVideoStreamIndex,
+        (s: { codec_type: string; index: number }) => s.codec_type === 'video' && s.index === activeVideoStreamIndex,
       );
       const audioStreams = streams.filter(
-        (s: { codec_type: string; index: number }) =>
-          s.codec_type === "audio" && activeAudioStreamIndexes.has(s.index),
+        (s: { codec_type: string; index: number }) => s.codec_type === 'audio' && activeAudioStreamIndexes.has(s.index),
       );
       const subtitleStreams = streams.filter(
-        (s: { codec_type: string }) => s.codec_type === "subtitle",
+        (s: { codec_type: string }) => s.codec_type === 'subtitle',
       );
 
       const videoStreamIndex = videoStream?.index;
@@ -976,7 +952,7 @@ function useFfmpegOperations({
       const ffmpegArgs = buildLossyFfmpegArgs({
         inputPath: filePath,
         outputPath: outPath,
-        lossyMode: lossyMode as import("../../../main").LossyMode,
+        lossyMode: lossyMode as import('../../../main').LossyMode,
         cutFrom,
         cutTo,
         fileDuration,
@@ -1085,7 +1061,7 @@ function useFfmpegOperations({
       activeVideoStreamIndex: number | undefined;
       activeAudioStreamIndexes: Set<number>;
     }) => {
-      console.log("paramsByFile", paramsByFile);
+      console.log('paramsByFile', paramsByFile);
 
       const segments = getGuaranteedSegments(segmentsIn, fileDuration);
 
@@ -1110,15 +1086,12 @@ function useFfmpegOperations({
         { start: desiredCutFrom, end: cutTo }: { start: number; end: number },
         i: number,
       ) => {
-        const onProgress = (progress: number) =>
-          onSingleProgress(i, progress / 2);
-        const onConcatProgress = (progress: number) =>
-          onSingleProgress(i, (1 + progress) / 2);
+        const onProgress = (progress: number) => onSingleProgress(i, progress / 2);
+        const onConcatProgress = (progress: number) => onSingleProgress(i, (1 + progress) / 2);
 
         const finalOutPath = join(outputDir, cutFileNames[i]!);
 
-        if (await shouldSkipExistingFile(finalOutPath))
-          return { path: finalOutPath, created: false };
+        if (await shouldSkipExistingFile(finalOutPath)) return { path: finalOutPath, created: false };
 
         await maybeMkDeepOutDir({ outputDir, fileOutPath: finalOutPath });
 
@@ -1177,9 +1150,8 @@ function useFfmpegOperations({
             // with smart cut, we only copy/cut *one* video stream, and *all* other non-video streams (main file only)
             streamIds: streamsToCopyFromMainFile
               .filter(
-                (stream) =>
-                  stream.index === videoStream.index ||
-                  stream.codec_type !== "video",
+                (stream) => stream.index === videoStream.index
+                  || stream.codec_type !== 'video',
               )
               .map((stream) => stream.index),
           },
@@ -1230,7 +1202,7 @@ function useFfmpegOperations({
         };
 
         if (lossyMode) {
-          console.log("Lossy mode: cutting/encoding the whole segment", {
+          console.log('Lossy mode: cutting/encoding the whole segment', {
             desiredCutFrom,
             cutTo,
           });
@@ -1265,16 +1237,16 @@ function useFfmpegOperations({
         });
         if (segmentNeedsSmartCut && !detectedFps) {
           throw new UserFacingError(
-            i18n.t("Smart cut is not possible when FPS is unknown"),
+            i18n.t('Smart cut is not possible when FPS is unknown'),
           );
         }
-        console.log("Smart cut on video stream", videoStream.index);
+        console.log('Smart cut on video stream', videoStream.index);
 
         // If we are cutting within two keyframes, just encode the whole part and return that
         // See https://github.com/mifi/lossless-cut/pull/1267#issuecomment-1236381740
         if (segmentNeedsSmartCut && losslessCutFrom > cutTo) {
           console.log(
-            "Segment is between two keyframes, cutting/encoding the whole segment",
+            'Segment is between two keyframes, cutting/encoding the whole segment',
             { desiredCutFrom, losslessCutFrom, cutTo },
           );
           return cutEncodeWholePart();
@@ -1289,7 +1261,7 @@ function useFfmpegOperations({
         });
 
         if (segmentNeedsSmartCut) {
-          console.log("Cutting/encoding lossless part", {
+          console.log('Cutting/encoding lossless part', {
             from: losslessCutFrom,
             to: cutTo,
           });
@@ -1297,10 +1269,10 @@ function useFfmpegOperations({
 
         const losslessPartOutPath = segmentNeedsSmartCut
           ? getSuffixedOutPath({
-              customOutDir,
-              filePath,
-              nameSuffix: `smartcut-segment-copy-${i}${ext}`,
-            })
+            customOutDir,
+            filePath,
+            nameSuffix: `smartcut-segment-copy-${i}${ext}`,
+          })
           : finalOutPath;
 
         // for smart cut we need to use keyframe cut here, and no avoid_negative_ts
@@ -1350,7 +1322,7 @@ function useFfmpegOperations({
             losslessCutFrom - frameDuration,
           );
 
-          console.log("Cutting/encoding smart part", {
+          console.log('Cutting/encoding smart part', {
             from: desiredCutFrom,
             to: encodeCutToSafe,
           });
@@ -1361,8 +1333,7 @@ function useFfmpegOperations({
           });
 
           // need to re-read streams because indexes may have changed. Using main file as source of streams and metadata
-          const { streams: streamsAfterCut } =
-            await readFileFfprobeMeta(losslessPartOutPath);
+          const { streams: streamsAfterCut } = await readFileFfprobeMeta(losslessPartOutPath);
 
           await concatFiles({
             paths: smartCutSegmentsToConcat,
@@ -1473,7 +1444,7 @@ function useFfmpegOperations({
       outPath: string;
       onProgress: (p: number) => void;
     }) => {
-      console.log("Making ffmpeg-assisted dummy file", {
+      console.log('Making ffmpeg-assisted dummy file', {
         filePathArg,
         outPath,
       });
@@ -1481,18 +1452,18 @@ function useFfmpegOperations({
       const duration = await getDuration(filePathArg);
 
       const ffmpegArgs = [
-        "-hide_banner",
+        '-hide_banner',
 
         // This is just a fast way of generating an empty dummy file
-        "-f",
-        "lavfi",
-        "-i",
-        "anullsrc=channel_layout=stereo:sample_rate=44100",
-        "-t",
+        '-f',
+        'lavfi',
+        '-i',
+        'anullsrc=channel_layout=stereo:sample_rate=44100',
+        '-t',
         String(duration),
-        "-acodec",
-        "flac",
-        "-y",
+        '-acodec',
+        'flac',
+        '-y',
         outPath,
       ];
 
@@ -1535,9 +1506,9 @@ function useFfmpegOperations({
       hasVideo: boolean;
       onProgress: (p: number) => void;
     }) => {
-      console.log("html5ifyAndLoad", { speed, hasVideo, hasAudio });
+      console.log('html5ifyAndLoad', { speed, hasVideo, hasAudio });
 
-      if (speed === "fastest") {
+      if (speed === 'fastest') {
         const path = getSuffixedOutPath({
           customOutDir,
           filePath: filePathArg,
@@ -1554,21 +1525,21 @@ function useFfmpegOperations({
       const outPath = getHtml5ifiedPath(customOutDir, filePathArg, speed);
       invariant(outPath != null);
 
-      let audio: "hq" | "lq" | "copy" | undefined;
+      let audio: 'hq' | 'lq' | 'copy' | undefined;
       if (hasAudio) {
-        if (speed === "slowest") audio = "hq";
-        else if (["slow-audio", "fast-audio"].includes(speed)) audio = "lq";
-        else if (["fast-audio-remux"].includes(speed)) audio = "copy";
+        if (speed === 'slowest') audio = 'hq';
+        else if (['slow-audio', 'fast-audio'].includes(speed)) audio = 'lq';
+        else if (['fast-audio-remux'].includes(speed)) audio = 'copy';
       }
 
-      let video: "hq" | "lq" | "copy" | undefined;
+      let video: 'hq' | 'lq' | 'copy' | undefined;
       if (hasVideo) {
-        if (speed === "slowest") video = "hq";
-        else if (["slow-audio", "slow"].includes(speed)) video = "lq";
-        else video = "copy";
+        if (speed === 'slowest') video = 'hq';
+        else if (['slow-audio', 'slow'].includes(speed)) video = 'lq';
+        else video = 'copy';
       }
 
-      console.log("Making HTML5 friendly version", {
+      console.log('Making HTML5 friendly version', {
         filePathArg,
         outPath,
         speed,
@@ -1583,18 +1554,18 @@ function useFfmpegOperations({
       // https://github.com/mifi/lossless-cut/issues/372#issuecomment-810766512
 
       switch (video) {
-        case "hq": {
+        case 'hq': {
           // eslint-disable-next-line unicorn/prefer-ternary
           if (isMac) {
             videoArgs = [
-              "-vf",
-              "format=yuv420p",
-              "-allow_sw",
-              "1",
-              "-vcodec",
-              "h264",
-              "-b:v",
-              "15M",
+              '-vf',
+              'format=yuv420p',
+              '-allow_sw',
+              '1',
+              '-vcodec',
+              'h264',
+              '-b:v',
+              '15M',
             ];
           } else {
             // AV1 is very slow
@@ -1604,102 +1575,102 @@ function useFfmpegOperations({
             // videoArgs = ['-vf', 'format=yuv420p', '-c:v', 'libvpx-vp9', '-crf', '30', '-b:v', '0', '-row-mt', '1'];
             // x264 can only be used in GPL projects
             videoArgs = [
-              "-vf",
-              "format=yuv420p",
-              "-c:v",
-              "libx264",
-              "-profile:v",
-              "high",
-              "-preset:v",
-              "slow",
-              "-crf",
-              "17",
+              '-vf',
+              'format=yuv420p',
+              '-c:v',
+              'libx264',
+              '-profile:v',
+              'high',
+              '-preset:v',
+              'slow',
+              '-crf',
+              '17',
             ];
           }
           break;
         }
-        case "lq": {
+        case 'lq': {
           const targetHeight = 400;
 
           // eslint-disable-next-line unicorn/prefer-ternary
           if (isMac) {
             videoArgs = [
-              "-vf",
+              '-vf',
               `scale=-2:${targetHeight},format=yuv420p`,
-              "-allow_sw",
-              "1",
-              "-sws_flags",
-              "lanczos",
-              "-vcodec",
-              "h264",
-              "-b:v",
-              "1500k",
+              '-allow_sw',
+              '1',
+              '-sws_flags',
+              'lanczos',
+              '-vcodec',
+              'h264',
+              '-b:v',
+              '1500k',
             ];
           } else {
             // videoArgs = ['-vf', `scale=-2:${targetHeight},format=yuv420p`, '-sws_flags', 'neighbor', '-c:v', 'libtheora', '-qscale:v', '1'];
             // x264 can only be used in GPL projects
             videoArgs = [
-              "-vf",
+              '-vf',
               `scale=-2:${targetHeight},format=yuv420p`,
-              "-sws_flags",
-              "neighbor",
-              "-c:v",
-              "libx264",
-              "-profile:v",
-              "baseline",
-              "-x264opts",
-              "level=3.0",
-              "-preset:v",
-              "ultrafast",
-              "-crf",
-              "28",
+              '-sws_flags',
+              'neighbor',
+              '-c:v',
+              'libx264',
+              '-profile:v',
+              'baseline',
+              '-x264opts',
+              'level=3.0',
+              '-preset:v',
+              'ultrafast',
+              '-crf',
+              '28',
             ];
           }
           break;
         }
-        case "copy": {
-          videoArgs = ["-vcodec", "copy"];
+        case 'copy': {
+          videoArgs = ['-vcodec', 'copy'];
           break;
         }
         default: {
-          videoArgs = ["-vn"];
+          videoArgs = ['-vn'];
         }
       }
 
       switch (audio) {
-        case "hq": {
+        case 'hq': {
           // eslint-disable-next-line unicorn/prefer-ternary
           if (isMac) {
-            audioArgs = ["-acodec", "aac_at", "-b:a", "192k"];
+            audioArgs = ['-acodec', 'aac_at', '-b:a', '192k'];
           } else {
-            audioArgs = ["-acodec", "flac"];
+            audioArgs = ['-acodec', 'flac'];
           }
           break;
         }
-        case "lq": {
+        case 'lq': {
           // eslint-disable-next-line unicorn/prefer-ternary
           if (isMac) {
             audioArgs = [
-              "-acodec",
-              "aac_at",
-              "-ar",
-              "44100",
-              "-ac",
-              "2",
-              "-b:a",
-              "96k",
+              '-acodec',
+              'aac_at',
+              '-ar',
+              '44100',
+              '-ac',
+              '2',
+              '-b:a',
+              '96k',
             ];
           } else {
-            audioArgs = ["-acodec", "flac", "-ar", "11025", "-ac", "2"];
+            audioArgs = ['-acodec', 'flac', '-ar', '11025', '-ac', '2'];
           }
           break;
         }
-        case "copy": {
-          audioArgs = ["-acodec", "copy"];
+        case 'copy': {
+          audioArgs = ['-acodec', 'copy'];
           break;
         }
         default: {
-          audioArgs = ["-an"];
+          audioArgs = ['-an'];
         }
       }
 
@@ -1708,42 +1679,39 @@ function useFfmpegOperations({
       // We don't pass -map, so ffmpeg picks one audio stream by itself. Therefore only apply the filter
       // when every audio stream has the same channel count, or the filter might not match the picked stream.
       let audioFilterArgs: string[] = [];
-      if (audio != null && audio !== "copy") {
+      if (audio != null && audio !== 'copy') {
         try {
           const audioStreams = (
             await readFileFfprobeMeta(filePathArg)
-          ).streams.filter((s) => s.codec_type === "audio");
-          const unsupportedStream = audioStreams.find((s) =>
-            hasCustomChannelLayout(s.channel_layout),
-          );
-          const sameChannelCount =
-            new Set(audioStreams.map((s) => s.channels)).size === 1;
+          ).streams.filter((s) => s.codec_type === 'audio');
+          const unsupportedStream = audioStreams.find((s) => hasCustomChannelLayout(s.channel_layout));
+          const sameChannelCount = new Set(audioStreams.map((s) => s.channels)).size === 1;
           if (unsupportedStream != null && sameChannelCount) {
             const filter = getFixChannelLayoutFilter({
               channels: unsupportedStream.channels,
               channelLayout: unsupportedStream.channel_layout,
             });
-            if (filter != null) audioFilterArgs = ["-af", filter];
+            if (filter != null) audioFilterArgs = ['-af', filter];
           }
         } catch (err) {
           // don't fail the conversion just because we couldn't probe it
-          console.warn("Failed to probe audio channel layout", err);
+          console.warn('Failed to probe audio channel layout', err);
         }
       }
 
       const ffmpegArgs = [
-        "-hide_banner",
-        ...(video === "lq" || video === "hq"
+        '-hide_banner',
+        ...(video === 'lq' || video === 'hq'
           ? getHwaccelArgs(ffmpegHwaccel)
           : []),
 
-        "-i",
+        '-i',
         filePathArg,
         ...videoArgs,
         ...audioArgs,
         ...audioFilterArgs,
-        "-sn",
-        "-y",
+        '-sn',
+        '-y',
         outPath,
       ];
 
@@ -1788,21 +1756,21 @@ function useFfmpegOperations({
       onProgress: (a: number) => void;
     }) => {
       const ffmpegArgs = [
-        "-hide_banner",
+        '-hide_banner',
 
-        "-i",
+        '-i',
         filePathArg,
 
         // https://github.com/mifi/lossless-cut/issues/1415
-        "-map_metadata",
-        "0",
-        "-map",
-        "0",
-        "-ignore_unknown",
+        '-map_metadata',
+        '0',
+        '-map',
+        '0',
+        '-ignore_unknown',
 
-        "-c",
-        "copy",
-        "-y",
+        '-c',
+        'copy',
+        '-y',
         outPath,
       ];
 
@@ -1829,23 +1797,23 @@ function useFfmpegOperations({
       outPath: string;
     }) => {
       const ffmpegArgs = [
-        "-hide_banner",
+        '-hide_banner',
 
         // https://stackoverflow.com/questions/73710657/remove-all-non-keyframes-from-h-264-avc-video-without-re-encoding
         // https://stackoverflow.com/questions/67088473/remove-all-non-key-frames-from-video-without-re-encoding
         // '-discard', 'nokey', // doesn't seem to work with hevc, so use noise=drop=not(key) instead
         // https://chatgpt.com/share/6a1c3be1-1064-83ec-b5c1-fa91ddf3cde8
-        "-i",
+        '-i',
         filePathArg,
-        "-map",
-        "v:0",
-        "-c",
-        "copy",
-        "-bsf:v",
+        '-map',
+        'v:0',
+        '-c',
+        'copy',
+        '-bsf:v',
         `noise=drop=not(key),noise=drop='mod(n\\,${formatFfmpegNumber(n)})',setts=ts='N/${formatFfmpegNumber(fps)}/TB_OUT'`,
-        "-an",
-        "-ignore_unknown",
-        "-y",
+        '-an',
+        '-ignore_unknown',
+        '-y',
         outPath,
       ];
 
@@ -1860,20 +1828,20 @@ function useFfmpegOperations({
 
   function getPreferredCodecFormat(stream: LiteFFprobeStream) {
     const map = {
-      mp3: { format: "mp3", ext: "mp3" },
-      opus: { format: "opus", ext: "opus" },
-      vorbis: { format: "ogg", ext: "ogg" },
-      h264: { format: "mp4", ext: "mp4" },
-      hevc: { format: "mp4", ext: "mp4" },
-      eac3: { format: "eac3", ext: "eac3" },
+      mp3: { format: 'mp3', ext: 'mp3' },
+      opus: { format: 'opus', ext: 'opus' },
+      vorbis: { format: 'ogg', ext: 'ogg' },
+      h264: { format: 'mp4', ext: 'mp4' },
+      hevc: { format: 'mp4', ext: 'mp4' },
+      eac3: { format: 'eac3', ext: 'eac3' },
 
-      subrip: { format: "srt", ext: "srt" },
-      mov_text: { format: "mp4", ext: "mp4" },
+      subrip: { format: 'srt', ext: 'srt' },
+      mov_text: { format: 'mp4', ext: 'mp4' },
 
-      m4a: { format: "ipod", ext: "m4a" },
-      aac: { format: "adts", ext: "aac" },
-      jpeg: { format: "image2", ext: "jpeg" },
-      png: { format: "image2", ext: "png" },
+      m4a: { format: 'ipod', ext: 'm4a' },
+      aac: { format: 'adts', ext: 'aac' },
+      jpeg: { format: 'image2', ext: 'jpeg' },
+      png: { format: 'image2', ext: 'png' },
 
       // TODO add more
       // TODO allow user to change?
@@ -1883,14 +1851,10 @@ function useFfmpegOperations({
     if (match) return match;
 
     // default fallbacks:
-    if (stream.codec_type === "video")
-      return { ext: "mkv", format: "matroska" } as const;
-    if (stream.codec_type === "audio")
-      return { ext: "mka", format: "matroska" } as const;
-    if (stream.codec_type === "subtitle")
-      return { ext: "mks", format: "matroska" } as const;
-    if (stream.codec_type === "data")
-      return { ext: "bin", format: "data" } as const; // https://superuser.com/questions/1243257/save-data-stream
+    if (stream.codec_type === 'video') return { ext: 'mkv', format: 'matroska' } as const;
+    if (stream.codec_type === 'audio') return { ext: 'mka', format: 'matroska' } as const;
+    if (stream.codec_type === 'subtitle') return { ext: 'mks', format: 'matroska' } as const;
+    if (stream.codec_type === 'data') return { ext: 'bin', format: 'data' } as const; // https://superuser.com/questions/1243257/save-data-stream
 
     return undefined;
   }
@@ -1933,18 +1897,17 @@ function useFfmpegOperations({
             filePath,
             nameSuffix: `stream-${index}-${type}-${codec}.${ext}`,
           });
-          if (!enableOverwriteOutput && (await mainApi.pathExists(outPath)))
-            throw new RefuseOverwriteError();
+          if (!enableOverwriteOutput && (await mainApi.pathExists(outPath))) throw new RefuseOverwriteError();
 
           streamArgs = [
             ...streamArgs,
-            "-map",
+            '-map',
             `0:${index}`,
-            "-c",
-            "copy",
-            "-f",
+            '-c',
+            'copy',
+            '-f',
             format,
-            "-y",
+            '-y',
             outPath,
           ];
           return outPath;
@@ -1952,7 +1915,7 @@ function useFfmpegOperations({
         { concurrency: 1 },
       );
 
-      const ffmpegArgs = ["-hide_banner", "-i", filePath, ...streamArgs];
+      const ffmpegArgs = ['-hide_banner', '-i', filePath, ...streamArgs];
 
       appendFfmpegCommandLog(ffmpegArgs);
       const { stdout } = await runFfmpeg(ffmpegArgs);
@@ -1974,21 +1937,20 @@ function useFfmpegOperations({
       invariant(filePath != null);
       if (streams.length === 0) return [];
 
-      console.log("Extracting", streams.length, "attachment streams");
+      console.log('Extracting', streams.length, 'attachment streams');
 
       let streamArgs: string[] = [];
       const outPaths = await pMap(
         streams,
         async ({ index, codec_name: codec, codec_type: type }) => {
-          const ext = codec || "bin";
+          const ext = codec || 'bin';
           const outPath = getSuffixedOutPath({
             customOutDir,
             filePath,
             nameSuffix: `stream-${index}-${type}-${codec}.${ext}`,
           });
           invariant(outPath != null);
-          if (!enableOverwriteOutput && (await mainApi.pathExists(outPath)))
-            throw new RefuseOverwriteError();
+          if (!enableOverwriteOutput && (await mainApi.pathExists(outPath))) throw new RefuseOverwriteError();
 
           streamArgs = [...streamArgs, `-dump_attachment:${index}`, outPath];
           return outPath;
@@ -1997,12 +1959,12 @@ function useFfmpegOperations({
       );
 
       const ffmpegArgs = [
-        "-y",
-        "-hide_banner",
-        "-loglevel",
-        "error",
+        '-y',
+        '-hide_banner',
+        '-loglevel',
+        'error',
         ...streamArgs,
-        "-i",
+        '-i',
         filePath,
       ];
 
@@ -2014,14 +1976,13 @@ function useFfmpegOperations({
         // Unfortunately ffmpeg will exit with code 1 even though it's a success
         // Note: This is kind of hacky:
         if (
-          err instanceof Error &&
-          "exitCode" in err &&
-          "stderr" in err &&
-          err.exitCode === 1 &&
-          typeof err.stderr === "string" &&
-          err.stderr.includes("At least one output file must be specified")
-        )
-          return outPaths;
+          err instanceof Error
+          && 'exitCode' in err
+          && 'stderr' in err
+          && err.exitCode === 1
+          && typeof err.stderr === 'string'
+          && err.stderr.includes('At least one output file must be specified')
+        ) return outPaths;
         throw err;
       }
       return outPaths;
@@ -2042,10 +2003,10 @@ function useFfmpegOperations({
       await assertFileExists(filePath);
 
       const attachmentStreams = streams.filter(
-        (s) => s.codec_type === "attachment",
+        (s) => s.codec_type === 'attachment',
       );
       const nonAttachmentStreams = streams.filter(
-        (s) => s.codec_type !== "attachment",
+        (s) => s.codec_type !== 'attachment',
       );
 
       // TODO progress

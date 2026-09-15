@@ -289,6 +289,10 @@ export interface Config {
   reducedMotion: "always" | "never" | "user";
   ffmpegHwaccel: FfmpegHwAccel;
   lossyMode: LossyMode;
+  exportQueue: ExportQueue;
+  projectTemplates: ProjectTemplate[];
+  watchFolders: WatchFolder[];
+  customPresets: Preset[];
 }
 
 export interface ApiActionRequest {
@@ -365,4 +369,125 @@ export interface LossyMode {
   outputFormat?: string | undefined;
   hwaccel?: HwAccel | undefined;
   movFastStart?: boolean | undefined;
+}
+
+// Batch Processing Shared Types
+
+export type ExportMode =
+  | "segments_to_chapters"
+  | "merge"
+  | "merge+separate"
+  | "separate";
+
+export interface ExportQueueItem {
+  id: string;
+  filePath: string;
+  segments: SegmentToExport[];
+  outFormat: string | undefined;
+  outputDir: string;
+  cutFileTemplate: string;
+  cutMergedFileTemplate: string;
+  exportMode: ExportMode;
+  lossyMode: LossyMode | undefined;
+  presetId: string | undefined;
+  keyframeCut: boolean;
+  enableSmartCut: boolean;
+  preserveMetadata: PreserveMetadata;
+  preserveMovData: boolean;
+  preserveChapters: boolean;
+  movFastStart: boolean;
+  avoidNegativeTs: AvoidNegativeTs;
+  ffmpegExperimental: boolean;
+  shortestFlag: boolean;
+  rotation: number | undefined;
+  status: "pending" | "processing" | "completed" | "failed" | "paused";
+  progress: number;
+  error?: string;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  outputPaths?: string[];
+}
+
+export interface ExportQueue {
+  items: ExportQueueItem[];
+  isProcessing: boolean;
+  currentItemId: string | undefined;
+  autoProcess: boolean;
+}
+
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  segments: SegmentBase[];
+  cutFileTemplate: string;
+  cutMergedFileTemplate: string;
+  mergedFileTemplate: string;
+  exportSettings: {
+    outFormat?: string;
+    exportMode: ExportMode;
+    lossyMode?: LossyMode;
+    keyframeCut: boolean;
+    enableSmartCut: boolean;
+    preserveMetadata: PreserveMetadata;
+    preserveMovData: boolean;
+    preserveChapters: boolean;
+    movFastStart: boolean;
+    avoidNegativeTs: AvoidNegativeTs;
+    ffmpegExperimental: boolean;
+    shortestFlag: boolean;
+  };
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WatchFolder {
+  id: string;
+  path: string;
+  enabled: boolean;
+  templateId?: string | undefined;
+  presetId?: string | undefined;
+  outputDir: string;
+  recursive: boolean;
+  filePattern: string;
+  lossyMode?: LossyMode | undefined;
+  deleteAfterProcessing: boolean;
+  processExisting: boolean;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  description?: string;
+  category: "builtin" | "custom";
+  platform?: "youtube" | "twitter" | "instagram" | "tiktok" | "generic";
+  lossyMode: LossyMode;
+  outFormat: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface BatchProcessOptions {
+  inputPaths: string[];
+  templateId?: string;
+  presetId?: string;
+  outputDir: string;
+  exportMode: ExportMode;
+  lossyMode?: LossyMode;
+  recursive: boolean;
+  filePattern: string;
+}
+
+export interface SegmentBase {
+  start: number;
+  end?: number | undefined;
+  name?: string | undefined;
+}
+
+export interface SegmentToExport extends SegmentBase {
+  originalIndex: number;
+  name?: string | undefined;
+  end: number;
 }
